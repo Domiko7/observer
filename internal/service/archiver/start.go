@@ -2,9 +2,11 @@ package archiver
 
 import (
 	"context"
+	"errors"
 	"runtime/debug"
 	"time"
 
+	"github.com/anyshake/observer/internal/dao/action"
 	"github.com/anyshake/observer/internal/dao/model"
 	"github.com/anyshake/observer/internal/hardware/explorer"
 	"github.com/anyshake/observer/pkg/logger"
@@ -12,6 +14,35 @@ import (
 
 func (s *ArchiverServiceImpl) handleInterrupt() {
 	s.wg.Done()
+}
+
+func (s *ArchiverServiceImpl) startExpiredSeisRecordsPurge(endTime time.Time) {
+	if !s.cleanupRunning.CompareAndSwap(false, true) {
+		logger.GetLogger(ID).Infoln("skipped expired seismic waveform records purge because previous archiver cleanup task is still running")
+		return
+	}
+
+	go s.purgeExpiredSeisRecords(endTime)
+}
+
+func (s *ArchiverServiceImpl) purgeExpiredSeisRecords(endTime time.Time) {
+	defer s.cleanupRunning.Store(false)
+	defer func() {
+		if r := recover(); r != nil {
+			logger.GetLogger(ID).Errorf("expired seismic waveform records purge unexpectly crashed, recovered from panic: %v\n%s", r, debug.Stack())
+		}
+	}()
+
+	if err := s.actionHandler.SeisRecordsPurge(time.Unix(0, 0), endTime); err != nil {
+		if errors.Is(err, action.ErrCleanupRunning) {
+			logger.GetLogger(ID).Infoln("skipped expired seismic waveform records purge because another cleanup task is running")
+			return
+		}
+
+		logger.GetLogger(ID).Errorf("failed to purge expired seismic waveform records: %v", err)
+		return
+	}
+	logger.GetLogger(ID).Infoln("expired seismic waveform records have been purged from database")
 }
 
 func (s *ArchiverServiceImpl) Start() error {
@@ -64,11 +95,7 @@ func (s *ArchiverServiceImpl) Start() error {
 			if s.cleanupCountDown == 0 {
 				s.cleanupCountDown = RECORDS_CLEANUP_INTERVAL
 				endTime := t.Add(time.Duration(-s.rotation) * time.Hour * 24)
-				if err := s.actionHandler.SeisRecordsPurge(time.Unix(0, 0), endTime); err != nil {
-					logger.GetLogger(ID).Errorf("failed to purge expired seismic waveform records: %v", err)
-					return
-				}
-				logger.GetLogger(ID).Infoln("expired seismic waveform records have been purged from database")
+				s.startExpiredSeisRecordsPurge(endTime)
 			}
 		})
 		if err != nil {

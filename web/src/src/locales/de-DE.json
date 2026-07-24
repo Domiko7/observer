@@ -308,6 +308,32 @@
                     "resetting": "Dienstkonfiguration wird zurückgesetzt...",
                     "success": "Dienstkonfiguration erfolgreich zurückgesetzt.",
                     "error": "Fehler beim Zurücksetzen der Dienstkonfiguration: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Läuft",
+                    "invalid_range": "Bitte wählen Sie ein gültiges Start- und Enddatum.",
+                    "started": "Der Bereinigungsauftrag wurde gestartet.",
+                    "request_failed": "Der Start des Bereinigungsauftrags ist fehlgeschlagen: {{error}}",
+                    "running_hint": "Ein weiterer Bereinigungsauftrag kann erst gestartet werden, wenn der aktuelle abgeschlossen ist.",
+                    "status_query_failed": "Der Status der Bereinigung konnte nicht abgerufen werden: {{error}}",
+                    "status_idle": "Derzeit läuft kein Bereinigungsauftrag.",
+                    "status_running": "Bereinigung läuft: {{kind}}.",
+                    "status_success": "Bereinigung abgeschlossen: {{kind}}.",
+                    "status_failed": "Bereinigung fehlgeschlagen: {{kind}}: {{error}}",
+                    "verification_label": "Verifizierungstext",
+                    "verification_help": "Bitte geben Sie \"{{verificationText}}\" ein, um die Ausführen-Schaltfläche zu aktivieren.",
+                    "kind_seis_records_full": "Wellenform-Aufzeichnungen",
+                    "kind_seis_records_by_date": "Wellenform-Aufzeichnungen im angegebenen Datumsbereich",
+                    "kind_miniseed_full": "MiniSEED-Dateien",
+                    "kind_miniseed_by_date": "MiniSEED-Dateien im angegebenen Datumsbereich",
+                    "kind_helicorder_full": "Helicorder-Dateien",
+                    "kind_helicorder_by_date": "Helicorder-Dateien im angegebenen Datumsbereich",
+                    "kind_unknown": "Bereinigungsauftrag",
+                    "start_date": "Startdatum",
+                    "end_date": "Enddatum",
+                    "mode_label": "Bereinigungsmodus",
+                    "mode_all": "Alle",
+                    "mode_range": "Datumsbereich"
                 }
             },
             "Metadata": {

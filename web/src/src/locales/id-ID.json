@@ -308,6 +308,32 @@
                     "resetting": "Mereset konfigurasi layanan...",
                     "success": "Berhasil mereset konfigurasi layanan.",
                     "error": "Gagal mereset konfigurasi layanan: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Berjalan",
+                    "invalid_range": "Silakan pilih tanggal mulai dan tanggal akhir yang valid.",
+                    "started": "Tugas pembersihan telah dimulai.",
+                    "request_failed": "Gagal memulai tugas pembersihan: {{error}}",
+                    "running_hint": "Operasi pembersihan lain tidak dapat dimulai sampai operasi saat ini selesai.",
+                    "status_query_failed": "Gagal mengambil status pembersihan: {{error}}",
+                    "status_idle": "Saat ini tidak ada tugas pembersihan yang berjalan.",
+                    "status_running": "Membersihkan: {{kind}}.",
+                    "status_success": "Pembersihan selesai: {{kind}}.",
+                    "status_failed": "Pembersihan gagal: {{kind}}: {{error}}",
+                    "verification_label": "Teks verifikasi",
+                    "verification_help": "Silakan masukkan \"{{verificationText}}\" untuk mengaktifkan tombol jalankan.",
+                    "kind_seis_records_full": "Rekaman waveform",
+                    "kind_seis_records_by_date": "Rekaman waveform dalam rentang tanggal yang ditentukan",
+                    "kind_miniseed_full": "File MiniSEED",
+                    "kind_miniseed_by_date": "File MiniSEED dalam rentang tanggal yang ditentukan",
+                    "kind_helicorder_full": "File Helicorder",
+                    "kind_helicorder_by_date": "File Helicorder dalam rentang tanggal yang ditentukan",
+                    "kind_unknown": "Tugas pembersihan",
+                    "start_date": "Tanggal mulai",
+                    "end_date": "Tanggal akhir",
+                    "mode_label": "Mode pembersihan",
+                    "mode_all": "Semua",
+                    "mode_range": "Rentang tanggal"
                 }
             },
             "Metadata": {

@@ -9,8 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/anyshake/observer/config"
@@ -94,66 +92,151 @@ func (r *mutationResolver) UpdateSysUser(ctx context.Context, userID string, use
 }
 
 // PurgeSeisRecords is the resolver for the purgeSeisRecords field.
-func (r *mutationResolver) PurgeSeisRecords(ctx context.Context) (bool, error) {
+func (r *mutationResolver) PurgeSeisRecords(ctx context.Context) (*graph_model.PurgeDataJob, error) {
 	if !r.checkIsAdmin(ctx) {
-		return false, errors.New("permission denied")
+		return nil, errors.New("permission denied")
 	}
 
-	if err := r.ActionHandler.SeisRecordsPurge(time.Unix(0, 0), r.TimeSource.Now()); err != nil {
-		return false, fmt.Errorf("failed to purge seis records: %w", err)
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
 	}
 
-	return true, nil
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "seis_records_full", func() error {
+		return r.ActionHandler.SeisRecordsPurgeAll()
+	})
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
+}
+
+// PurgeSeisRecordsByDate is the resolver for the purgeSeisRecordsByDate field.
+func (r *mutationResolver) PurgeSeisRecordsByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error) {
+	if !r.checkIsAdmin(ctx) {
+		return nil, errors.New("permission denied")
+	}
+
+	_startDate := time.UnixMilli(startDate)
+	_endDate := time.UnixMilli(endDate)
+
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
+	}
+
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "seis_records_by_date", func() error {
+		truncatedStartTime := time.Date(
+			_startDate.UTC().Year(),
+			_startDate.UTC().Month(),
+			_startDate.UTC().Day(),
+			0,
+			0,
+			0,
+			0,
+			time.UTC,
+		)
+		truncatedEndTime := time.Date(
+			_endDate.UTC().Year(),
+			_endDate.UTC().Month(),
+			_endDate.UTC().Day(),
+			0,
+			0,
+			0,
+			0,
+			time.UTC,
+		).
+			AddDate(0, 0, 1).
+			Add(-time.Millisecond)
+		if truncatedStartTime.After(truncatedEndTime) {
+			return errors.New("start date is after end date")
+		}
+
+		return r.ActionHandler.SeisRecordsPurge(truncatedStartTime, truncatedEndTime)
+
+	})
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
 }
 
 // PurgeMiniSeedFiles is the resolver for the purgeMiniSeedFiles field.
-func (r *mutationResolver) PurgeMiniSeedFiles(ctx context.Context) (bool, error) {
+func (r *mutationResolver) PurgeMiniSeedFiles(ctx context.Context) (*graph_model.PurgeDataJob, error) {
 	if !r.checkIsAdmin(ctx) {
-		return false, errors.New("permission denied")
+		return nil, errors.New("permission denied")
 	}
 
-	serviceObj, ok := r.ServiceMap[service_miniseed.ID]
-	if !ok {
-		return false, fmt.Errorf("service was not found, maybe it was excluded from building")
-	}
-	assets, err := serviceObj.GetAssetList()
+	serviceObj, err := r.getMiniSeedService()
 	if err != nil {
-		return false, fmt.Errorf("failed to get assets list for MiniSEED service: %w", err)
+		return nil, err
 	}
 
-	for _, asset := range assets {
-		dirPath := filepath.Dir(asset.FilePath)
-		if err := os.RemoveAll(dirPath); err != nil {
-			return false, fmt.Errorf("failed to remove directory %s: %w", dirPath, err)
-		}
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
 	}
 
-	return true, nil
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "miniseed_full", serviceObj.PurgeMiniSeedFiles)
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
+}
+
+// PurgeMiniSeedFilesByDate is the resolver for the purgeMiniSeedFilesByDate field.
+func (r *mutationResolver) PurgeMiniSeedFilesByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error) {
+	if !r.checkIsAdmin(ctx) {
+		return nil, errors.New("permission denied")
+	}
+
+	serviceObj, err := r.getMiniSeedService()
+	if err != nil {
+		return nil, err
+	}
+
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
+	}
+
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "miniseed_by_date", func() error {
+		return serviceObj.PurgeMiniSeedFilesByDate(time.UnixMilli(startDate), time.UnixMilli(endDate))
+	})
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
 }
 
 // PurgeHelicorderFiles is the resolver for the purgeHelicorderFiles field.
-func (r *mutationResolver) PurgeHelicorderFiles(ctx context.Context) (bool, error) {
+func (r *mutationResolver) PurgeHelicorderFiles(ctx context.Context) (*graph_model.PurgeDataJob, error) {
 	if !r.checkIsAdmin(ctx) {
-		return false, errors.New("permission denied")
+		return nil, errors.New("permission denied")
 	}
 
-	serviceObj, ok := r.ServiceMap[service_helicorder.ID]
-	if !ok {
-		return false, fmt.Errorf("service was not found, maybe it was excluded from building")
-	}
-	assets, err := serviceObj.GetAssetList()
+	serviceObj, err := r.getHelicorderService()
 	if err != nil {
-		return false, fmt.Errorf("failed to get assets list for helicorder service: %w", err)
+		return nil, err
 	}
 
-	for _, asset := range assets {
-		dirPath := filepath.Dir(asset.FilePath)
-		if err := os.RemoveAll(dirPath); err != nil {
-			return false, fmt.Errorf("failed to remove directory %s: %w", dirPath, err)
-		}
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
 	}
 
-	return true, nil
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "helicorder_full", serviceObj.PurgeHelicorderFiles)
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
+}
+
+// PurgeHelicorderFilesByDate is the resolver for the purgeHelicorderFilesByDate field.
+func (r *mutationResolver) PurgeHelicorderFilesByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error) {
+	if !r.checkIsAdmin(ctx) {
+		return nil, errors.New("permission denied")
+	}
+
+	serviceObj, err := r.getHelicorderService()
+	if err != nil {
+		return nil, err
+	}
+
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
+	}
+
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "helicorder_by_date", func() error {
+		return serviceObj.PurgeHelicorderFilesByDate(time.UnixMilli(startDate), time.UnixMilli(endDate))
+	})
+	return r.toPurgeDataJobResponse(jobCreateResponse), nil
 }
 
 // UpdateStationConfig is the resolver for the updateStationConfig field.
@@ -944,6 +1027,20 @@ func (r *queryResolver) GetUpgradeStatus(ctx context.Context) (*graph_model.Upgr
 		Eligible: eligible,
 		Applied:  applied,
 	}, nil
+}
+
+// GetCleanupStatus is the resolver for the getCleanupStatus field.
+func (r *queryResolver) GetCleanupStatus(ctx context.Context) (*graph_model.PurgeDataJob, error) {
+	if !r.checkIsAdmin(ctx) {
+		return nil, errors.New("permission denied")
+	}
+
+	jobTracker := LoadOrCreatePurgeDataJob(r.Resolver)
+	if jobTracker == nil {
+		return nil, errors.New("failed to create job tracker")
+	}
+
+	return r.toPurgeDataJobResponse(jobTracker.Get()), nil
 }
 
 // Mutation returns MutationResolver implementation.

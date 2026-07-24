@@ -1,6 +1,7 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import {
     LocalizationProvider,
+    MobileDatePicker,
     MobileDateTimePicker,
     renderTimeViewClock
 } from '@mui/x-date-pickers';
@@ -9,8 +10,15 @@ import * as XDatePickers from '@mui/x-date-pickers/locales';
 import * as DateFnsLang from 'date-fns/locale';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { localeConfig } from '../../config/locale';
 import { getTimeString } from '../../helpers/utils/getTimeString';
+
+const getDateString = (ts: number) => {
+    const date = new Date(ts);
+    const year = date.getFullYear();
+    const month = `${date.getMonth() + 1}`.padStart(2, '0');
+    const day = `${date.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
 
 export interface TimePickerProps {
     readonly value?: number;
@@ -18,7 +26,8 @@ export interface TimePickerProps {
     readonly placeholder?: string;
     readonly onChange: (value: number) => void;
     readonly className?: string;
-    readonly currentLocale: keyof typeof localeConfig.resources;
+    readonly currentLocale: string;
+    readonly dateOnly?: boolean;
 }
 
 export const TimePicker = ({
@@ -27,9 +36,11 @@ export const TimePicker = ({
     placeholder,
     defaultValue,
     currentLocale,
-    className
+    className,
+    dateOnly = false
 }: TimePickerProps) => {
     const [open, setOpen] = useState(false);
+    const safeCurrentLocale = currentLocale || 'en-US';
 
     const themeRecords = useMemo(
         () =>
@@ -56,15 +67,15 @@ export const TimePicker = ({
 
     const [locale4Component, setLocale4Component] = useState('enUS');
     useEffect(() => {
-        const componentLocale = currentLocale.replace(/[^a-z0-9]/gi, '');
+        const componentLocale = safeCurrentLocale.replace(/[^a-z0-9]/gi, '');
         setLocale4Component(themeRecords[componentLocale] ? componentLocale : 'enUS');
-    }, [currentLocale, themeRecords]);
+    }, [safeCurrentLocale, themeRecords]);
 
-    const [locale4Adapter, setLocale4Adapter] = useState('en-US');
+    const [locale4Adapter, setLocale4Adapter] = useState('enUS');
     useEffect(() => {
-        const componentLocale = currentLocale.replace(/[^a-z0-9]/gi, '');
-        setLocale4Adapter(adapterLocaleRecords[componentLocale] ? componentLocale : 'en-US');
-    }, [currentLocale, adapterLocaleRecords]);
+        const componentLocale = safeCurrentLocale.replace(/[^a-z0-9]/gi, '');
+        setLocale4Adapter(adapterLocaleRecords[componentLocale] ? componentLocale : 'enUS');
+    }, [safeCurrentLocale, adapterLocaleRecords]);
 
     const [internalValue, setInternalValue] = useState<number | null>();
     useEffect(() => {
@@ -96,7 +107,7 @@ export const TimePicker = ({
     );
 
     return (
-        <div>
+        <div className="relative">
             <input
                 readOnly
                 type="text"
@@ -104,42 +115,80 @@ export const TimePicker = ({
                 className={`cursor-pointer ${className}`}
                 onClick={() => setOpen(true)}
                 onFocus={({ currentTarget }) => currentTarget.blur()}
-                value={getTimeString(internalValue ?? 0)}
+                value={
+                    internalValue === null || internalValue === undefined || internalValue === 0
+                        ? ''
+                        : dateOnly
+                          ? getDateString(internalValue)
+                          : getTimeString(internalValue)
+                }
             />
 
-            <div hidden={true}>
+            <div className="absolute h-0 w-0 overflow-hidden">
                 <ThemeProvider theme={theme}>
                     <LocalizationProvider
                         dateAdapter={AdapterDateFns}
                         adapterLocale={adapterLocaleRecords[locale4Adapter]}
                     >
-                        <MobileDateTimePicker
-                            open={open}
-                            onClose={() => setOpen(false)}
-                            onChange={handleDateChange}
-                            format="yyyy-MM-dd HH:mm:ss"
-                            className="w-full"
-                            timezone="system"
-                            views={['year', 'month', 'day', 'hours', 'minutes', 'seconds']}
-                            viewRenderers={{
-                                hours: renderTimeViewClock,
-                                minutes: renderTimeViewClock,
-                                seconds: renderTimeViewClock
-                            }}
-                            slotProps={{
-                                field: { clearable: true },
-                                mobilePaper: {
-                                    sx: {
-                                        padding: '12px',
-                                        borderRadius: '12px',
-                                        overflow: 'hidden'
+                        {dateOnly ? (
+                            <MobileDatePicker
+                                open={open}
+                                onClose={() => setOpen(false)}
+                                onChange={handleDateChange}
+                                format="yyyy-MM-dd"
+                                className="w-full"
+                                timezone="system"
+                                views={['year', 'month', 'day']}
+                                slotProps={{
+                                    field: { clearable: true },
+                                    mobilePaper: {
+                                        sx: {
+                                            padding: '12px',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden'
+                                        }
                                     }
+                                }}
+                                defaultValue={
+                                    defaultValue === null || defaultValue === undefined
+                                        ? null
+                                        : new Date(defaultValue)
                                 }
-                            }}
-                            defaultValue={new Date(defaultValue ?? 0)}
-                            value={new Date(internalValue ?? 0)}
-                            ampm={false}
-                        />
+                                value={
+                                    internalValue === null || internalValue === undefined
+                                        ? null
+                                        : new Date(internalValue)
+                                }
+                            />
+                        ) : (
+                            <MobileDateTimePicker
+                                open={open}
+                                onClose={() => setOpen(false)}
+                                onChange={handleDateChange}
+                                format="yyyy-MM-dd HH:mm:ss"
+                                className="w-full"
+                                timezone="system"
+                                views={['year', 'month', 'day', 'hours', 'minutes', 'seconds']}
+                                viewRenderers={{
+                                    hours: renderTimeViewClock,
+                                    minutes: renderTimeViewClock,
+                                    seconds: renderTimeViewClock
+                                }}
+                                slotProps={{
+                                    field: { clearable: true },
+                                    mobilePaper: {
+                                        sx: {
+                                            padding: '12px',
+                                            borderRadius: '12px',
+                                            overflow: 'hidden'
+                                        }
+                                    }
+                                }}
+                                defaultValue={new Date(defaultValue ?? 0)}
+                                value={new Date(internalValue ?? 0)}
+                                ampm={false}
+                            />
+                        )}
                     </LocalizationProvider>
                 </ThemeProvider>
             </div>

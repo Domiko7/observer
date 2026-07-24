@@ -293,23 +293,59 @@ func (s *MiniSeedServiceImpl) saveMiniSeedRecords(cfg *explorer.DeviceConfig) (i
 }
 
 func (s *MiniSeedServiceImpl) cleanupMiniSeedRecords(until time.Time) error {
-	err := filepath.Walk(s.filePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	return s.actionHandler.CleanupExclusive(func() error {
+		return s.removeMiniSeedRecordsByDateRange(time.Unix(0, 0), until)
+	})
+}
 
-		if info.IsDir() {
-			dirTime := info.ModTime()
-			if dirTime.Before(until) {
-				err := os.RemoveAll(path)
-				if err != nil {
-					return fmt.Errorf("failed to remove directory: %w", err)
-				}
-			}
-		}
+func (s *MiniSeedServiceImpl) PurgeMiniSeedFiles() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
+	return s.actionHandler.CleanupExclusive(func() error {
+		if err := os.RemoveAll(s.filePath); err != nil {
+			return fmt.Errorf("failed to remove MiniSEED directory %s: %w", s.filePath, err)
+		}
 		return nil
 	})
+}
 
-	return err
+func (s *MiniSeedServiceImpl) PurgeMiniSeedFilesByDate(startDate, endDate time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	startTime, endTime, err := normalizeDateRange(startDate, endDate)
+	if err != nil {
+		return err
+	}
+
+	return s.actionHandler.CleanupExclusive(func() error {
+		return s.removeMiniSeedRecordsByDateRange(startTime, endTime)
+	})
+}
+
+func (s *MiniSeedServiceImpl) removeMiniSeedRecordsByDateRange(startDate, endDate time.Time) error {
+	startTime, endTime, err := normalizeDateRange(startDate, endDate)
+	if err != nil {
+		return err
+	}
+
+	for currentDate := startTime; !currentDate.After(endTime); currentDate = currentDate.AddDate(0, 0, 1) {
+		dirPath := filepath.Join(s.filePath, currentDate.UTC().Format("2006-01-02"))
+		if err := os.RemoveAll(dirPath); err != nil {
+			return fmt.Errorf("failed to remove MiniSEED directory %s: %w", dirPath, err)
+		}
+	}
+
+	return nil
+}
+
+func normalizeDateRange(startDate, endDate time.Time) (time.Time, time.Time, error) {
+	startTime := time.Date(startDate.UTC().Year(), startDate.UTC().Month(), startDate.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	endTime := time.Date(endDate.UTC().Year(), endDate.UTC().Month(), endDate.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	if startTime.After(endTime) {
+		return time.Time{}, time.Time{}, errors.New("start date is after end date")
+	}
+
+	return startTime, endTime, nil
 }

@@ -308,6 +308,32 @@
                     "resetting": "A repor configuração do serviço...",
                     "success": "Configuração do serviço reposta com sucesso.",
                     "error": "Falha ao repor a configuração do serviço: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Em execução",
+                    "invalid_range": "Selecione uma data de início e fim válidas.",
+                    "started": "A tarefa de purga foi iniciada.",
+                    "request_failed": "Falha ao iniciar a tarefa de purga: {{error}}",
+                    "running_hint": "Não é possível iniciar outra operação de purga enquanto a atual não terminar.",
+                    "status_query_failed": "Falha ao obter o estado da purga: {{error}}",
+                    "status_idle": "Atualmente, não existe nenhuma tarefa de purga em execução.",
+                    "status_running": "A purgar: {{kind}}.",
+                    "status_success": "Purga concluída: {{kind}}.",
+                    "status_failed": "Purga falhada: {{kind}}: {{error}}",
+                    "verification_label": "Texto de verificação",
+                    "verification_help": "Introduza \"{{verificationText}}\" para ativar o botão de execução.",
+                    "kind_seis_records_full": "Registos de forma de onda",
+                    "kind_seis_records_by_date": "Registos de forma de onda no intervalo de datas especificado",
+                    "kind_miniseed_full": "Ficheiros MiniSEED",
+                    "kind_miniseed_by_date": "Ficheiros MiniSEED no intervalo de datas especificado",
+                    "kind_helicorder_full": "Ficheiros Helicorder",
+                    "kind_helicorder_by_date": "Ficheiros Helicorder no intervalo de datas especificado",
+                    "kind_unknown": "Tarefa de purga",
+                    "start_date": "Data de início",
+                    "end_date": "Data de fim",
+                    "mode_label": "Modo de purga",
+                    "mode_all": "Tudo",
+                    "mode_range": "Intervalo de datas"
                 }
             },
             "Metadata": {

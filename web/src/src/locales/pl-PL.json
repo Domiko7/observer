@@ -308,6 +308,32 @@
                     "resetting": "Resetowanie konfiguracji usługi...",
                     "success": "Pomyślnie zresetowano konfigurację usługi.",
                     "error": "Nie udało się zresetować konfiguracji usługi: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Uruchomione",
+                    "invalid_range": "Wybierz poprawną datę rozpoczęcia i zakończenia.",
+                    "started": "Zadanie czyszczenia zostało rozpoczęte.",
+                    "request_failed": "Nie udało się uruchomić zadania czyszczenia: {{error}}",
+                    "running_hint": "Inna operacja czyszczenia nie może zostać uruchomiona, dopóki bieżąca nie zostanie zakończona.",
+                    "status_query_failed": "Nie udało się pobrać stanu czyszczenia: {{error}}",
+                    "status_idle": "Aktualnie nie trwa żadne zadanie czyszczenia.",
+                    "status_running": "Czyszczenie: {{kind}}.",
+                    "status_success": "Czyszczenie zakończone: {{kind}}.",
+                    "status_failed": "Czyszczenie nie powiodło się: {{kind}}: {{error}}",
+                    "verification_label": "Tekst weryfikacyjny",
+                    "verification_help": "Wpisz \"{{verificationText}}\", aby włączyć przycisk uruchamiania.",
+                    "kind_seis_records_full": "Rekordy falogramów",
+                    "kind_seis_records_by_date": "Rekordy falogramów w określonym zakresie dat",
+                    "kind_miniseed_full": "Pliki miniSEED",
+                    "kind_miniseed_by_date": "Pliki miniSEED w określonym zakresie dat",
+                    "kind_helicorder_full": "Pliki helikorderów",
+                    "kind_helicorder_by_date": "Pliki helikorderów w określonym zakresie dat",
+                    "kind_unknown": "Zadanie czyszczenia",
+                    "start_date": "Data rozpoczęcia",
+                    "end_date": "Data zakończenia",
+                    "mode_label": "Tryb czyszczenia",
+                    "mode_all": "Wszystko",
+                    "mode_range": "Zakres dat"
                 }
             },
             "Metadata": {

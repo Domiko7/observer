@@ -26,9 +26,12 @@ export type Mutation = {
   __typename?: 'Mutation';
   createSysUser: Scalars['String']['output'];
   importGlobalConfig: Scalars['Boolean']['output'];
-  purgeHelicorderFiles: Scalars['Boolean']['output'];
-  purgeMiniSeedFiles: Scalars['Boolean']['output'];
-  purgeSeisRecords: Scalars['Boolean']['output'];
+  purgeHelicorderFiles: PurgeDataJob;
+  purgeHelicorderFilesByDate: PurgeDataJob;
+  purgeMiniSeedFiles: PurgeDataJob;
+  purgeMiniSeedFilesByDate: PurgeDataJob;
+  purgeSeisRecords: PurgeDataJob;
+  purgeSeisRecordsByDate: PurgeDataJob;
   removeSysUser: Scalars['Boolean']['output'];
   restartApplication: Scalars['Boolean']['output'];
   restartService: Scalars['Boolean']['output'];
@@ -51,6 +54,24 @@ export type MutationCreateSysUserArgs = {
 
 export type MutationImportGlobalConfigArgs = {
   data: Scalars['String']['input'];
+};
+
+
+export type MutationPurgeHelicorderFilesByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
+};
+
+
+export type MutationPurgeMiniSeedFilesByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
+};
+
+
+export type MutationPurgeSeisRecordsByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
 };
 
 
@@ -103,6 +124,7 @@ export type Query = {
   __typename?: 'Query';
   exportGlobalConfig: Scalars['String']['output'];
   getApplicationLogs?: Maybe<Array<Scalars['String']['output']>>;
+  getCleanupStatus: PurgeDataJob;
   getCurrentTime: Scalars['Int64']['output'];
   getCurrentUser: SysUser;
   getDeviceConfig: DeviceConfig;
@@ -186,6 +208,23 @@ export type DeviceStatus = {
   messages: Scalars['Int64']['output'];
   startedAt: Scalars['Int64']['output'];
   updatedAt: Scalars['Int64']['output'];
+};
+
+export enum JobStatus {
+  Failed = 'FAILED',
+  Idle = 'IDLE',
+  Running = 'RUNNING',
+  Succeeded = 'SUCCEEDED'
+}
+
+export type PurgeDataJob = {
+  __typename?: 'purgeDataJob';
+  error?: Maybe<Scalars['String']['output']>;
+  finishedAt?: Maybe<Scalars['Int64']['output']>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  startedAt?: Maybe<Scalars['Int64']['output']>;
+  status: JobStatus;
 };
 
 export type SeisEvent = {
@@ -375,17 +414,46 @@ export type IsCurrentUserAdminQuery = { __typename?: 'Query', getCurrentUser: { 
 export type PurgeSeisRecordsMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeSeisRecordsMutation = { __typename?: 'Mutation', purgeSeisRecords: boolean };
+export type PurgeSeisRecordsMutation = { __typename?: 'Mutation', purgeSeisRecords: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeSeisRecordsByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeSeisRecordsByDateMutation = { __typename?: 'Mutation', purgeSeisRecordsByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type GetCleanupStatusQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetCleanupStatusQuery = { __typename?: 'Query', getCleanupStatus: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type PurgeMiniSeedFilesMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeMiniSeedFilesMutation = { __typename?: 'Mutation', purgeMiniSeedFiles: boolean };
+export type PurgeMiniSeedFilesMutation = { __typename?: 'Mutation', purgeMiniSeedFiles: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeMiniSeedFilesByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeMiniSeedFilesByDateMutation = { __typename?: 'Mutation', purgeMiniSeedFilesByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type PurgeHelicorderFilesMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeHelicorderFilesMutation = { __typename?: 'Mutation', purgeHelicorderFiles: boolean };
+export type PurgeHelicorderFilesMutation = { __typename?: 'Mutation', purgeHelicorderFiles: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeHelicorderFilesByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeHelicorderFilesByDateMutation = { __typename?: 'Mutation', purgeHelicorderFilesByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type RestoreStationConfigMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -1209,7 +1277,14 @@ export type IsCurrentUserAdminSuspenseQueryHookResult = ReturnType<typeof useIsC
 export type IsCurrentUserAdminQueryResult = ApolloReactCommon.QueryResult<IsCurrentUserAdminQuery, IsCurrentUserAdminQueryVariables>;
 export const PurgeSeisRecordsDocument = gql`
     mutation purgeSeisRecords {
-  purgeSeisRecords
+  purgeSeisRecords {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeSeisRecordsMutationFn = ApolloReactCommon.MutationFunction<PurgeSeisRecordsMutation, PurgeSeisRecordsMutationVariables>;
@@ -1237,9 +1312,99 @@ export function usePurgeSeisRecordsMutation(baseOptions?: ApolloReactHooks.Mutat
 export type PurgeSeisRecordsMutationHookResult = ReturnType<typeof usePurgeSeisRecordsMutation>;
 export type PurgeSeisRecordsMutationResult = ApolloReactCommon.MutationResult<PurgeSeisRecordsMutation>;
 export type PurgeSeisRecordsMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeSeisRecordsMutation, PurgeSeisRecordsMutationVariables>;
+export const PurgeSeisRecordsByDateDocument = gql`
+    mutation purgeSeisRecordsByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeSeisRecordsByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeSeisRecordsByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>;
+
+/**
+ * __usePurgeSeisRecordsByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeSeisRecordsByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeSeisRecordsByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeSeisRecordsByDateMutation, { data, loading, error }] = usePurgeSeisRecordsByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeSeisRecordsByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>(PurgeSeisRecordsByDateDocument, options);
+      }
+export type PurgeSeisRecordsByDateMutationHookResult = ReturnType<typeof usePurgeSeisRecordsByDateMutation>;
+export type PurgeSeisRecordsByDateMutationResult = ApolloReactCommon.MutationResult<PurgeSeisRecordsByDateMutation>;
+export type PurgeSeisRecordsByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>;
+export const GetCleanupStatusDocument = gql`
+    query getCleanupStatus {
+  getCleanupStatus {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+
+/**
+ * __useGetCleanupStatusQuery__
+ *
+ * To run a query within a React component, call `useGetCleanupStatusQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetCleanupStatusQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetCleanupStatusQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetCleanupStatusQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+      }
+export function useGetCleanupStatusLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+        }
+export function useGetCleanupStatusSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+        }
+export type GetCleanupStatusQueryHookResult = ReturnType<typeof useGetCleanupStatusQuery>;
+export type GetCleanupStatusLazyQueryHookResult = ReturnType<typeof useGetCleanupStatusLazyQuery>;
+export type GetCleanupStatusSuspenseQueryHookResult = ReturnType<typeof useGetCleanupStatusSuspenseQuery>;
+export type GetCleanupStatusQueryResult = ApolloReactCommon.QueryResult<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>;
 export const PurgeMiniSeedFilesDocument = gql`
     mutation purgeMiniSeedFiles {
-  purgeMiniSeedFiles
+  purgeMiniSeedFiles {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeMiniSeedFilesMutationFn = ApolloReactCommon.MutationFunction<PurgeMiniSeedFilesMutation, PurgeMiniSeedFilesMutationVariables>;
@@ -1267,9 +1432,55 @@ export function usePurgeMiniSeedFilesMutation(baseOptions?: ApolloReactHooks.Mut
 export type PurgeMiniSeedFilesMutationHookResult = ReturnType<typeof usePurgeMiniSeedFilesMutation>;
 export type PurgeMiniSeedFilesMutationResult = ApolloReactCommon.MutationResult<PurgeMiniSeedFilesMutation>;
 export type PurgeMiniSeedFilesMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeMiniSeedFilesMutation, PurgeMiniSeedFilesMutationVariables>;
+export const PurgeMiniSeedFilesByDateDocument = gql`
+    mutation purgeMiniSeedFilesByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeMiniSeedFilesByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeMiniSeedFilesByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>;
+
+/**
+ * __usePurgeMiniSeedFilesByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeMiniSeedFilesByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeMiniSeedFilesByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeMiniSeedFilesByDateMutation, { data, loading, error }] = usePurgeMiniSeedFilesByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeMiniSeedFilesByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>(PurgeMiniSeedFilesByDateDocument, options);
+      }
+export type PurgeMiniSeedFilesByDateMutationHookResult = ReturnType<typeof usePurgeMiniSeedFilesByDateMutation>;
+export type PurgeMiniSeedFilesByDateMutationResult = ApolloReactCommon.MutationResult<PurgeMiniSeedFilesByDateMutation>;
+export type PurgeMiniSeedFilesByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>;
 export const PurgeHelicorderFilesDocument = gql`
     mutation purgeHelicorderFiles {
-  purgeHelicorderFiles
+  purgeHelicorderFiles {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeHelicorderFilesMutationFn = ApolloReactCommon.MutationFunction<PurgeHelicorderFilesMutation, PurgeHelicorderFilesMutationVariables>;
@@ -1297,6 +1508,45 @@ export function usePurgeHelicorderFilesMutation(baseOptions?: ApolloReactHooks.M
 export type PurgeHelicorderFilesMutationHookResult = ReturnType<typeof usePurgeHelicorderFilesMutation>;
 export type PurgeHelicorderFilesMutationResult = ApolloReactCommon.MutationResult<PurgeHelicorderFilesMutation>;
 export type PurgeHelicorderFilesMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeHelicorderFilesMutation, PurgeHelicorderFilesMutationVariables>;
+export const PurgeHelicorderFilesByDateDocument = gql`
+    mutation purgeHelicorderFilesByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeHelicorderFilesByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeHelicorderFilesByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>;
+
+/**
+ * __usePurgeHelicorderFilesByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeHelicorderFilesByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeHelicorderFilesByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeHelicorderFilesByDateMutation, { data, loading, error }] = usePurgeHelicorderFilesByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeHelicorderFilesByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>(PurgeHelicorderFilesByDateDocument, options);
+      }
+export type PurgeHelicorderFilesByDateMutationHookResult = ReturnType<typeof usePurgeHelicorderFilesByDateMutation>;
+export type PurgeHelicorderFilesByDateMutationResult = ApolloReactCommon.MutationResult<PurgeHelicorderFilesByDateMutation>;
+export type PurgeHelicorderFilesByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>;
 export const RestoreStationConfigDocument = gql`
     mutation restoreStationConfig {
   restoreStationConfig

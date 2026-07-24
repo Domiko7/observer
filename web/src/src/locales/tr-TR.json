@@ -308,6 +308,32 @@
                     "resetting": "Hizmet yapılandırması sıfırlanıyor...",
                     "success": "Hizmet yapılandırması başarıyla sıfırlandı.",
                     "error": "Hizmet yapılandırması sıfırlanamadı: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Çalışıyor",
+                    "invalid_range": "Lütfen geçerli bir başlangıç ve bitiş tarihi seçin.",
+                    "started": "Temizleme görevi başlatıldı.",
+                    "request_failed": "Temizleme görevi başlatılamadı: {{error}}",
+                    "running_hint": "Mevcut görev tamamlanana kadar başka bir temizleme işlemi başlatılamaz.",
+                    "status_query_failed": "Temizleme durumu alınamadı: {{error}}",
+                    "status_idle": "Şu anda hiçbir temizleme görevi çalışmıyor.",
+                    "status_running": "Temizleniyor: {{kind}}.",
+                    "status_success": "Temizleme tamamlandı: {{kind}}.",
+                    "status_failed": "Temizleme başarısız oldu: {{kind}}: {{error}}",
+                    "verification_label": "Doğrulama metni",
+                    "verification_help": "Çalıştır düğmesini etkinleştirmek için lütfen \"{{verificationText}}\" girin.",
+                    "kind_seis_records_full": "Dalga formu kayıtları",
+                    "kind_seis_records_by_date": "Belirtilen tarih aralığındaki dalga formu kayıtları",
+                    "kind_miniseed_full": "MiniSEED dosyaları",
+                    "kind_miniseed_by_date": "Belirtilen tarih aralığındaki MiniSEED dosyaları",
+                    "kind_helicorder_full": "Helicorder dosyaları",
+                    "kind_helicorder_by_date": "Belirtilen tarih aralığındaki Helicorder dosyaları",
+                    "kind_unknown": "Temizleme görevi",
+                    "start_date": "Başlangıç tarihi",
+                    "end_date": "Bitiş tarihi",
+                    "mode_label": "Temizleme modu",
+                    "mode_all": "Tümü",
+                    "mode_range": "Tarih aralığı"
                 }
             },
             "Metadata": {

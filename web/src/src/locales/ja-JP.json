@@ -308,6 +308,32 @@
                     "resetting": "サービス設定をリセット中...",
                     "success": "サービス設定を正常にリセットしました。",
                     "error": "サービス設定のリセットに失敗しました： {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "実行中",
+                    "invalid_range": "有効な開始日と終了日を選択してください。",
+                    "started": "クリーンアップタスクを開始しました。",
+                    "request_failed": "クリーンアップタスクの開始に失敗しました: {{error}}",
+                    "running_hint": "現在のタスクが完了するまで、別のクリーンアップ操作は開始できません。",
+                    "status_query_failed": "クリーンアップ状態の取得に失敗しました: {{error}}",
+                    "status_idle": "現在、実行中のクリーンアップタスクはありません。",
+                    "status_running": "クリーンアップ中: {{kind}}。",
+                    "status_success": "クリーンアップ完了: {{kind}}。",
+                    "status_failed": "クリーンアップ失敗: {{kind}}: {{error}}",
+                    "verification_label": "確認用テキスト",
+                    "verification_help": "実行ボタンを有効にするには \"{{verificationText}}\" を入力してください。",
+                    "kind_seis_records_full": "波形記録",
+                    "kind_seis_records_by_date": "指定した期間の波形記録",
+                    "kind_miniseed_full": "MiniSEED ファイル",
+                    "kind_miniseed_by_date": "指定した期間の MiniSEED ファイル",
+                    "kind_helicorder_full": "Helicorder ファイル",
+                    "kind_helicorder_by_date": "指定した期間の Helicorder ファイル",
+                    "kind_unknown": "クリーンアップタスク",
+                    "start_date": "開始日",
+                    "end_date": "終了日",
+                    "mode_label": "クリーンアップ方法",
+                    "mode_all": "すべて",
+                    "mode_range": "日付範囲"
                 }
             },
             "Metadata": {

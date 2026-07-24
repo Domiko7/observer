@@ -48,26 +48,30 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		CreateSysUser        func(childComplexity int, username string, password string, admin bool) int
-		ImportGlobalConfig   func(childComplexity int, data string) int
-		PurgeHelicorderFiles func(childComplexity int) int
-		PurgeMiniSeedFiles   func(childComplexity int) int
-		PurgeSeisRecords     func(childComplexity int) int
-		RemoveSysUser        func(childComplexity int, userID string) int
-		RestartApplication   func(childComplexity int) int
-		RestartService       func(childComplexity int, serviceID string) int
-		RestoreServiceConfig func(childComplexity int, serviceID *string) int
-		RestoreStationConfig func(childComplexity int) int
-		StartService         func(childComplexity int, serviceID string) int
-		StopService          func(childComplexity int, serviceID string) int
-		UpdateServiceConfig  func(childComplexity int, serviceID string, key string, val any) int
-		UpdateStationConfig  func(childComplexity int, key string, value any) int
-		UpdateSysUser        func(childComplexity int, userID string, username string, password *string, admin bool) int
+		CreateSysUser              func(childComplexity int, username string, password string, admin bool) int
+		ImportGlobalConfig         func(childComplexity int, data string) int
+		PurgeHelicorderFiles       func(childComplexity int) int
+		PurgeHelicorderFilesByDate func(childComplexity int, startDate int64, endDate int64) int
+		PurgeMiniSeedFiles         func(childComplexity int) int
+		PurgeMiniSeedFilesByDate   func(childComplexity int, startDate int64, endDate int64) int
+		PurgeSeisRecords           func(childComplexity int) int
+		PurgeSeisRecordsByDate     func(childComplexity int, startDate int64, endDate int64) int
+		RemoveSysUser              func(childComplexity int, userID string) int
+		RestartApplication         func(childComplexity int) int
+		RestartService             func(childComplexity int, serviceID string) int
+		RestoreServiceConfig       func(childComplexity int, serviceID *string) int
+		RestoreStationConfig       func(childComplexity int) int
+		StartService               func(childComplexity int, serviceID string) int
+		StopService                func(childComplexity int, serviceID string) int
+		UpdateServiceConfig        func(childComplexity int, serviceID string, key string, val any) int
+		UpdateStationConfig        func(childComplexity int, key string, value any) int
+		UpdateSysUser              func(childComplexity int, userID string, username string, password *string, admin bool) int
 	}
 
 	Query struct {
 		ExportGlobalConfig         func(childComplexity int) int
 		GetApplicationLogs         func(childComplexity int) int
+		GetCleanupStatus           func(childComplexity int) int
 		GetCurrentTime             func(childComplexity int) int
 		GetCurrentUser             func(childComplexity int) int
 		GetDeviceConfig            func(childComplexity int) int
@@ -130,6 +134,15 @@ type ComplexityRoot struct {
 		Messages  func(childComplexity int) int
 		StartedAt func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
+	}
+
+	PurgeDataJob struct {
+		Error      func(childComplexity int) int
+		FinishedAt func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Kind       func(childComplexity int) int
+		StartedAt  func(childComplexity int) int
+		Status     func(childComplexity int) int
 	}
 
 	SeisEvent struct {
@@ -214,9 +227,12 @@ type MutationResolver interface {
 	CreateSysUser(ctx context.Context, username string, password string, admin bool) (string, error)
 	RemoveSysUser(ctx context.Context, userID string) (bool, error)
 	UpdateSysUser(ctx context.Context, userID string, username string, password *string, admin bool) (bool, error)
-	PurgeSeisRecords(ctx context.Context) (bool, error)
-	PurgeMiniSeedFiles(ctx context.Context) (bool, error)
-	PurgeHelicorderFiles(ctx context.Context) (bool, error)
+	PurgeSeisRecords(ctx context.Context) (*graph_model.PurgeDataJob, error)
+	PurgeSeisRecordsByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error)
+	PurgeMiniSeedFiles(ctx context.Context) (*graph_model.PurgeDataJob, error)
+	PurgeMiniSeedFilesByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error)
+	PurgeHelicorderFiles(ctx context.Context) (*graph_model.PurgeDataJob, error)
+	PurgeHelicorderFilesByDate(ctx context.Context, startDate int64, endDate int64) (*graph_model.PurgeDataJob, error)
 	UpdateStationConfig(ctx context.Context, key string, value any) (bool, error)
 	RestoreStationConfig(ctx context.Context) (bool, error)
 	ImportGlobalConfig(ctx context.Context, data string) (bool, error)
@@ -251,6 +267,7 @@ type QueryResolver interface {
 	GetApplicationLogs(ctx context.Context) ([]string, error)
 	ExportGlobalConfig(ctx context.Context) (string, error)
 	GetUpgradeStatus(ctx context.Context) (*graph_model.UpgradeStatus, error)
+	GetCleanupStatus(ctx context.Context) (*graph_model.PurgeDataJob, error)
 }
 
 type executableSchema struct {
@@ -300,18 +317,51 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PurgeHelicorderFiles(childComplexity), true
+	case "Mutation.purgeHelicorderFilesByDate":
+		if e.complexity.Mutation.PurgeHelicorderFilesByDate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_purgeHelicorderFilesByDate_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PurgeHelicorderFilesByDate(childComplexity, args["startDate"].(int64), args["endDate"].(int64)), true
 	case "Mutation.purgeMiniSeedFiles":
 		if e.complexity.Mutation.PurgeMiniSeedFiles == nil {
 			break
 		}
 
 		return e.complexity.Mutation.PurgeMiniSeedFiles(childComplexity), true
+	case "Mutation.purgeMiniSeedFilesByDate":
+		if e.complexity.Mutation.PurgeMiniSeedFilesByDate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_purgeMiniSeedFilesByDate_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PurgeMiniSeedFilesByDate(childComplexity, args["startDate"].(int64), args["endDate"].(int64)), true
 	case "Mutation.purgeSeisRecords":
 		if e.complexity.Mutation.PurgeSeisRecords == nil {
 			break
 		}
 
 		return e.complexity.Mutation.PurgeSeisRecords(childComplexity), true
+	case "Mutation.purgeSeisRecordsByDate":
+		if e.complexity.Mutation.PurgeSeisRecordsByDate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_purgeSeisRecordsByDate_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.PurgeSeisRecordsByDate(childComplexity, args["startDate"].(int64), args["endDate"].(int64)), true
 	case "Mutation.removeSysUser":
 		if e.complexity.Mutation.RemoveSysUser == nil {
 			break
@@ -425,6 +475,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.GetApplicationLogs(childComplexity), true
+	case "Query.getCleanupStatus":
+		if e.complexity.Query.GetCleanupStatus == nil {
+			break
+		}
+
+		return e.complexity.Query.GetCleanupStatus(childComplexity), true
 	case "Query.getCurrentTime":
 		if e.complexity.Query.GetCurrentTime == nil {
 			break
@@ -727,6 +783,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.DeviceStatus.UpdatedAt(childComplexity), true
+
+	case "purgeDataJob.error":
+		if e.complexity.PurgeDataJob.Error == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.Error(childComplexity), true
+	case "purgeDataJob.finishedAt":
+		if e.complexity.PurgeDataJob.FinishedAt == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.FinishedAt(childComplexity), true
+	case "purgeDataJob.id":
+		if e.complexity.PurgeDataJob.ID == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.ID(childComplexity), true
+	case "purgeDataJob.kind":
+		if e.complexity.PurgeDataJob.Kind == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.Kind(childComplexity), true
+	case "purgeDataJob.startedAt":
+		if e.complexity.PurgeDataJob.StartedAt == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.StartedAt(childComplexity), true
+	case "purgeDataJob.status":
+		if e.complexity.PurgeDataJob.Status == nil {
+			break
+		}
+
+		return e.complexity.PurgeDataJob.Status(childComplexity), true
 
 	case "seisEvent.depth":
 		if e.complexity.SeisEvent.Depth == nil {
@@ -1192,6 +1285,54 @@ func (ec *executionContext) field_Mutation_importGlobalConfig_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_purgeHelicorderFilesByDate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "startDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["startDate"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "endDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["endDate"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_purgeMiniSeedFilesByDate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "startDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["startDate"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "endDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["endDate"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_purgeSeisRecordsByDate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "startDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["startDate"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "endDate", ec.unmarshalNInt642int64)
+	if err != nil {
+		return nil, err
+	}
+	args["endDate"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeSysUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -1544,7 +1685,7 @@ func (ec *executionContext) _Mutation_purgeSeisRecords(ctx context.Context, fiel
 			return ec.resolvers.Mutation().PurgeSeisRecords(ctx)
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
 		true,
 		true,
 	)
@@ -1557,8 +1698,77 @@ func (ec *executionContext) fieldContext_Mutation_purgeSeisRecords(_ context.Con
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_purgeSeisRecordsByDate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_purgeSeisRecordsByDate,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PurgeSeisRecordsByDate(ctx, fc.Args["startDate"].(int64), fc.Args["endDate"].(int64))
+		},
+		nil,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_purgeSeisRecordsByDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_purgeSeisRecordsByDate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -1573,7 +1783,7 @@ func (ec *executionContext) _Mutation_purgeMiniSeedFiles(ctx context.Context, fi
 			return ec.resolvers.Mutation().PurgeMiniSeedFiles(ctx)
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
 		true,
 		true,
 	)
@@ -1586,8 +1796,77 @@ func (ec *executionContext) fieldContext_Mutation_purgeMiniSeedFiles(_ context.C
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_purgeMiniSeedFilesByDate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_purgeMiniSeedFilesByDate,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PurgeMiniSeedFilesByDate(ctx, fc.Args["startDate"].(int64), fc.Args["endDate"].(int64))
+		},
+		nil,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_purgeMiniSeedFilesByDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_purgeMiniSeedFilesByDate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -1602,7 +1881,7 @@ func (ec *executionContext) _Mutation_purgeHelicorderFiles(ctx context.Context, 
 			return ec.resolvers.Mutation().PurgeHelicorderFiles(ctx)
 		},
 		nil,
-		ec.marshalNBoolean2bool,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
 		true,
 		true,
 	)
@@ -1615,8 +1894,77 @@ func (ec *executionContext) fieldContext_Mutation_purgeHelicorderFiles(_ context
 		IsMethod:   true,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_purgeHelicorderFilesByDate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_purgeHelicorderFilesByDate,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().PurgeHelicorderFilesByDate(ctx, fc.Args["startDate"].(int64), fc.Args["endDate"].(int64))
+		},
+		nil,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_purgeHelicorderFilesByDate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_purgeHelicorderFilesByDate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -2878,6 +3226,49 @@ func (ec *executionContext) fieldContext_Query_getUpgradeStatus(_ context.Contex
 				return ec.fieldContext_upgradeStatus_applied(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type upgradeStatus", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getCleanupStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_getCleanupStatus,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().GetCleanupStatus(ctx)
+		},
+		nil,
+		ec.marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_getCleanupStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_purgeDataJob_id(ctx, field)
+			case "kind":
+				return ec.fieldContext_purgeDataJob_kind(ctx, field)
+			case "status":
+				return ec.fieldContext_purgeDataJob_status(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_purgeDataJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_purgeDataJob_finishedAt(ctx, field)
+			case "error":
+				return ec.fieldContext_purgeDataJob_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type purgeDataJob", field.Name)
 		},
 	}
 	return fc, nil
@@ -5187,6 +5578,180 @@ func (ec *executionContext) fieldContext_deviceStatus_messages(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _purgeDataJob_id(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _purgeDataJob_kind(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_kind,
+		func(ctx context.Context) (any, error) {
+			return obj.Kind, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_kind(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _purgeDataJob_status(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNjobStatus2githubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐJobStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type jobStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _purgeDataJob_startedAt(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _purgeDataJob_finishedAt(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOInt642ᚖint64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _purgeDataJob_error(ctx context.Context, field graphql.CollectedField, obj *graph_model.PurgeDataJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_purgeDataJob_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_purgeDataJob_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "purgeDataJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _seisEvent_verfied(ctx context.Context, field graphql.CollectedField, obj *graph_model.SeisEvent) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -6722,6 +7287,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "purgeSeisRecordsByDate":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_purgeSeisRecordsByDate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "purgeMiniSeedFiles":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_purgeMiniSeedFiles(ctx, field)
@@ -6729,9 +7301,23 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "purgeMiniSeedFilesByDate":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_purgeMiniSeedFilesByDate(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "purgeHelicorderFiles":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_purgeHelicorderFiles(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "purgeHelicorderFilesByDate":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_purgeHelicorderFilesByDate(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -7329,6 +7915,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_getUpgradeStatus(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getCleanupStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getCleanupStatus(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -7962,6 +8570,61 @@ func (ec *executionContext) _deviceStatus(ctx context.Context, sel ast.Selection
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var purgeDataJobImplementors = []string{"purgeDataJob"}
+
+func (ec *executionContext) _purgeDataJob(ctx context.Context, sel ast.SelectionSet, obj *graph_model.PurgeDataJob) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, purgeDataJobImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("purgeDataJob")
+		case "id":
+			out.Values[i] = ec._purgeDataJob_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "kind":
+			out.Values[i] = ec._purgeDataJob_kind(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._purgeDataJob_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startedAt":
+			out.Values[i] = ec._purgeDataJob_startedAt(ctx, field, obj)
+		case "finishedAt":
+			out.Values[i] = ec._purgeDataJob_finishedAt(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._purgeDataJob_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -9216,6 +9879,30 @@ func (ec *executionContext) marshalNdeviceStatus2ᚖgithubᚗcomᚋanyshakeᚋob
 	return ec._deviceStatus(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNjobStatus2githubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐJobStatus(ctx context.Context, v any) (graph_model.JobStatus, error) {
+	var res graph_model.JobStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNjobStatus2githubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐJobStatus(ctx context.Context, sel ast.SelectionSet, v graph_model.JobStatus) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNpurgeDataJob2githubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob(ctx context.Context, sel ast.SelectionSet, v graph_model.PurgeDataJob) graphql.Marshaler {
+	return ec._purgeDataJob(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNpurgeDataJob2ᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐPurgeDataJob(ctx context.Context, sel ast.SelectionSet, v *graph_model.PurgeDataJob) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._purgeDataJob(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNseisEvent2ᚕᚖgithubᚗcomᚋanyshakeᚋobserverᚋinternalᚋserverᚋrouterᚋgraphᚋmodelᚐSeisEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*graph_model.SeisEvent) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -9583,6 +10270,24 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) unmarshalOInt642ᚖint64(ctx context.Context, v any) (*int64, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt64(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt642ᚖint64(ctx context.Context, sel ast.SelectionSet, v *int64) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalInt64(*v)
+	return res
 }
 
 func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

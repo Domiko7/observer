@@ -240,25 +240,21 @@ func appStart(ver *semver.Version, build *unibuild.UniBuild, args arguments) {
 		logger.GetLogger(main).Errorf("failed to create seis event source: %v", err)
 	}
 
-	httpServer := server.New(
-		conf.Server.Debug,
-		conf.Server.CORS,
-		&graph_resolver.Resolver{
-			RestartChan:              restartChan,
-			CurrentVersion:           ver,
-			CurrentBuild:             build,
-			UpgradeHelper:            upgradeHelper,
-			ServiceMap:               serviceMap,
-			HardwareDev:              hardwareDevice,
-			TimeSource:               timeSrc,
-			ActionHandler:            actionHandler,
-			LogBuffer:                logBuffer,
-			SeisEventSource:          seisEventSource,
-			StationConfigConstraints: stationConfigConstraints,
-		},
-		logger.GetLogger("http_server"),
-	)
-
+	graphqlResolver := &graph_resolver.Resolver{
+		RestartChan:              restartChan,
+		CurrentVersion:           ver,
+		CurrentBuild:             build,
+		UpgradeHelper:            upgradeHelper,
+		ServiceMap:               serviceMap,
+		HardwareDev:              hardwareDevice,
+		TimeSource:               timeSrc,
+		ActionHandler:            actionHandler,
+		LogBuffer:                logBuffer,
+		SeisEventSource:          seisEventSource,
+		StationConfigConstraints: stationConfigConstraints,
+	}
+	graphqlResolver.DataPurgeJob = graph_resolver.LoadOrCreatePurgeDataJob(graphqlResolver)
+	httpServer := server.New(conf.Server.Debug, conf.Server.CORS, graphqlResolver, logger.GetLogger("http_server"))
 	if err = httpServer.Setup(conf.Server.Listen); err != nil {
 		logger.GetLogger(main).Errorln(err)
 		runCleanerTasks()

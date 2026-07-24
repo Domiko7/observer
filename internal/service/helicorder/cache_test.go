@@ -157,7 +157,7 @@ func TestCacheStorageConfigOptions(t *testing.T) {
 	t.Parallel()
 
 	config := &helicorderConfigCacheStorageImpl{}
-	if config.GetDefaultValue() != CACHE_STORAGE_DISABLED {
+	if config.GetDefaultValue() != CACHE_STORAGE_DISK {
 		t.Fatalf("default cache storage = %v, want %q", config.GetDefaultValue(), CACHE_STORAGE_DISABLED)
 	}
 

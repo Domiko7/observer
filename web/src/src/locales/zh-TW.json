@@ -308,6 +308,32 @@
                     "resetting": "正在重設服務設定...",
                     "success": "已成功重設服務設定。",
                     "error": "重設服務設定失敗：{{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "執行中",
+                    "invalid_range": "請選擇有效的起始與截止日期。",
+                    "started": "清理任務已開始。",
+                    "request_failed": "清理任務啟動失敗：{{error}}",
+                    "running_hint": "目前任務完成前，無法啟動其他清理操作。",
+                    "status_query_failed": "取得清理狀態失敗：{{error}}",
+                    "status_idle": "目前沒有清理任務執行中。",
+                    "status_running": "正在清理：{{kind}}。",
+                    "status_success": "清理完成：{{kind}}。",
+                    "status_failed": "清理失敗：{{kind}}：{{error}}",
+                    "verification_label": "驗證文字",
+                    "verification_help": "請輸入「{{verificationText}}」以啟用執行按鈕。",
+                    "kind_seis_records_full": "波形紀錄",
+                    "kind_seis_records_by_date": "指定日期範圍的波形紀錄",
+                    "kind_miniseed_full": "MiniSEED 檔案",
+                    "kind_miniseed_by_date": "指定日期範圍的 MiniSEED 檔案",
+                    "kind_helicorder_full": "Helicorder 檔案",
+                    "kind_helicorder_by_date": "指定日期範圍的 Helicorder 檔案",
+                    "kind_unknown": "清理任務",
+                    "start_date": "起始日期",
+                    "end_date": "截止日期",
+                    "mode_label": "清理方式",
+                    "mode_all": "全部",
+                    "mode_range": "日期範圍"
                 }
             },
             "Metadata": {

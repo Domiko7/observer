@@ -308,6 +308,32 @@
                     "resetting": "Сброс конфигурации службы...",
                     "success": "Конфигурация службы успешно сброшена.",
                     "error": "Не удалось сбросить конфигурацию службы: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Выполняется",
+                    "invalid_range": "Пожалуйста, выберите корректную дату начала и окончания.",
+                    "started": "Задача очистки запущена.",
+                    "request_failed": "Не удалось начать задачу очистки: {{error}}",
+                    "running_hint": "Другая операция очистки не может быть запущена, пока текущая не завершится.",
+                    "status_query_failed": "Не удалось получить состояние очистки: {{error}}",
+                    "status_idle": "В настоящее время нет выполняющихся задач очистки.",
+                    "status_running": "Очистка: {{kind}}.",
+                    "status_success": "Очистка завершена: {{kind}}.",
+                    "status_failed": "Очистка не удалась: {{kind}}: {{error}}",
+                    "verification_label": "Проверочный текст",
+                    "verification_help": "Пожалуйста, введите \"{{verificationText}}\", чтобы активировать кнопку запуска.",
+                    "kind_seis_records_full": "Записи волновых форм",
+                    "kind_seis_records_by_date": "Записи волновых форм в указанном диапазоне дат",
+                    "kind_miniseed_full": "Файлы MiniSEED",
+                    "kind_miniseed_by_date": "Файлы MiniSEED в указанном диапазоне дат",
+                    "kind_helicorder_full": "Файлы Helicorder",
+                    "kind_helicorder_by_date": "Файлы Helicorder в указанном диапазоне дат",
+                    "kind_unknown": "Задача очистки",
+                    "start_date": "Дата начала",
+                    "end_date": "Дата окончания",
+                    "mode_label": "Режим очистки",
+                    "mode_all": "Все",
+                    "mode_range": "Диапазон дат"
                 }
             },
             "Metadata": {

@@ -308,6 +308,32 @@
                     "resetting": "Resetting service configuration...",
                     "success": "Successfully reset service configuration.",
                     "error": "Failed to reset service configuration: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Running",
+                    "invalid_range": "Please select a valid start and end date.",
+                    "started": "Purge task started.",
+                    "request_failed": "Failed to start purge task: {{error}}",
+                    "running_hint": "Another purge operation cannot be started until the current one completes.",
+                    "status_query_failed": "Failed to fetch purge status: {{error}}",
+                    "status_idle": "No purge task is currently running.",
+                    "status_running": "Purging: {{kind}}.",
+                    "status_success": "Purge completed: {{kind}}.",
+                    "status_failed": "Purge failed: {{kind}}: {{error}}",
+                    "verification_label": "Verification text",
+                    "verification_help": "Please enter \"{{verificationText}}\" to enable the run button.",
+                    "kind_seis_records_full": "Waveform records",
+                    "kind_seis_records_by_date": "Waveform records in the specified date range",
+                    "kind_miniseed_full": "MiniSEED files",
+                    "kind_miniseed_by_date": "MiniSEED files in the specified date range",
+                    "kind_helicorder_full": "Helicorder files",
+                    "kind_helicorder_by_date": "Helicorder files in the specified date range",
+                    "kind_unknown": "Purge task",
+                    "start_date": "Start date",
+                    "end_date": "End date",
+                    "mode_label": "Purge mode",
+                    "mode_all": "All",
+                    "mode_range": "Date range"
                 }
             },
             "Metadata": {

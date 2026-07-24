@@ -77,7 +77,7 @@ const Settings = ({ currentLocale }: IRouterComponent) => {
                 adminOnly: true,
                 icon: mdiAlertDecagram,
                 label: t('views.Settings.Dangerous.title'),
-                element: <Dangerous />
+                element: <Dangerous currentLocale={currentLocale} />
             }
         };
     }, [t, currentLocale]);

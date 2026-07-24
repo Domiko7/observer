@@ -308,6 +308,32 @@
                     "resetting": "Réinitialisation de la configuration du service en cours...",
                     "success": "Configuration du service réinitialisée avec succès.",
                     "error": "Échec de la réinitialisation de la configuration du service : {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "En cours",
+                    "invalid_range": "Veuillez sélectionner une date de début et de fin valides.",
+                    "started": "La tâche de purge a commencé.",
+                    "request_failed": "Échec du démarrage de la tâche de purge : {{error}}",
+                    "running_hint": "Une autre opération de purge ne peut pas être démarrée tant que l’opération actuelle n’est pas terminée.",
+                    "status_query_failed": "Échec de la récupération de l’état de la purge : {{error}}",
+                    "status_idle": "Aucune tâche de purge n’est actuellement en cours.",
+                    "status_running": "Purge en cours : {{kind}}.",
+                    "status_success": "Purge terminée : {{kind}}.",
+                    "status_failed": "Purge échouée : {{kind}} : {{error}}",
+                    "verification_label": "Texte de vérification",
+                    "verification_help": "Veuillez saisir \"{{verificationText}}\" pour activer le bouton d’exécution.",
+                    "kind_seis_records_full": "Enregistrements de forme d’onde",
+                    "kind_seis_records_by_date": "Enregistrements de forme d’onde dans la plage de dates spécifiée",
+                    "kind_miniseed_full": "Fichiers MiniSEED",
+                    "kind_miniseed_by_date": "Fichiers MiniSEED dans la plage de dates spécifiée",
+                    "kind_helicorder_full": "Fichiers Helicorder",
+                    "kind_helicorder_by_date": "Fichiers Helicorder dans la plage de dates spécifiée",
+                    "kind_unknown": "Tâche de purge",
+                    "start_date": "Date de début",
+                    "end_date": "Date de fin",
+                    "mode_label": "Mode de purge",
+                    "mode_all": "Tout",
+                    "mode_range": "Plage de dates"
                 }
             },
             "Metadata": {

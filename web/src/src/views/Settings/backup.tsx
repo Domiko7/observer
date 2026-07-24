@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { CodeBlock } from '../../components/widget/CodeBlock';
@@ -13,17 +13,46 @@ export const Backup = () => {
 
     const [, { refetch: exportGlobalConfigRefetch, data: exportGlobalConfigData }] =
         useExportGlobalConfigLazyQuery();
-    const handleExportGlobalConfig = async () =>
-        await sendPromiseAlert(
-            exportGlobalConfigRefetch(),
-            t('views.Settings.Backup.backup_config.generating'),
-            t('views.Settings.Backup.backup_config.success'),
-            (error) => t('views.Settings.Backup.backup_config.error', { error })
-        );
+    const handleExportGlobalConfig = useCallback(
+        async () =>
+            await sendPromiseAlert(
+                exportGlobalConfigRefetch(),
+                t('views.Settings.Backup.backup_config.generating'),
+                t('views.Settings.Backup.backup_config.success'),
+                (error) => t('views.Settings.Backup.backup_config.error', { error })
+            ),
+        [exportGlobalConfigRefetch, t]
+    );
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [importGlobalConfig] = useImportGlobalConfigMutation();
-    const handleImportGlobalConfig = () => {
+    const handleSelectBackupMode = useCallback(() => {
+        setMode('backup');
+    }, []);
+
+    const handleSelectRestoreMode = useCallback(() => {
+        setMode('restore');
+    }, []);
+
+    const handleConfirmedImportGlobalConfig = useCallback(async () => {
+        const { current: fileInput } = fileInputRef;
+        if (!fileInput) {
+            return;
+        }
+        const file = fileInput.files?.[0];
+        if (!file) {
+            sendUserAlert(t('views.Settings.Backup.restore_config.no_file_selected'), true);
+            return;
+        }
+        await sendPromiseAlert(
+            importGlobalConfig({ variables: { data: await file.text() } }),
+            t('views.Settings.Backup.restore_config.restoring'),
+            t('views.Settings.Backup.restore_config.success'),
+            (error) => t('views.Settings.Backup.restore_config.error', { error })
+        );
+    }, [importGlobalConfig, t]);
+
+    const handleImportGlobalConfig = useCallback(() => {
         const { current: fileInput } = fileInputRef;
         if (!fileInput) {
             return;
@@ -37,16 +66,9 @@ export const Backup = () => {
             title: t('views.Settings.Backup.restore_config.confirm_title'),
             cancelBtnText: t('views.Settings.Backup.restore_config.cancel_button'),
             confirmBtnText: t('views.Settings.Backup.restore_config.confirm_button'),
-            onConfirmed: async () => {
-                await sendPromiseAlert(
-                    importGlobalConfig({ variables: { data: await file.text() } }),
-                    t('views.Settings.Backup.restore_config.restoring'),
-                    t('views.Settings.Backup.restore_config.success'),
-                    (error) => t('views.Settings.Backup.restore_config.error', { error })
-                );
-            }
+            onConfirmed: handleConfirmedImportGlobalConfig
         });
-    };
+    }, [handleConfirmedImportGlobalConfig, t]);
 
     return (
         <div className="mx-auto max-w-3xl space-y-4">
@@ -56,7 +78,7 @@ export const Backup = () => {
                         id="mode-radio-backup"
                         type="radio"
                         checked={mode === 'backup'}
-                        onChange={() => setMode('backup')}
+                        onChange={handleSelectBackupMode}
                         className="radio radio-primary radio-xs"
                     />
                     <label htmlFor="mode-radio-backup" className="label cursor-pointer">
@@ -68,7 +90,7 @@ export const Backup = () => {
                         id="mode-radio-restore"
                         type="radio"
                         checked={mode === 'restore'}
-                        onChange={() => setMode('restore')}
+                        onChange={handleSelectRestoreMode}
                         className="radio radio-primary radio-xs"
                     />
                     <label htmlFor="mode-radio-restore" className="label cursor-pointer">
