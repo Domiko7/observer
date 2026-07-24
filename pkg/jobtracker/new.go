@@ -9,6 +9,7 @@ type Job struct {
 	ID         string
 	Kind       string
 	Status     JobStatus
+	_startedAt time.Time
 	StartedAt  *time.Time
 	FinishedAt *time.Time
 	Error      error

@@ -84,8 +84,6 @@ github.com/bclswl0827/sqlite v1.11.1-0.20240613172512-9e6ac9861470 h1:VYRieWhizT
 github.com/bclswl0827/sqlite v1.11.1-0.20240613172512-9e6ac9861470/go.mod h1:/xElCFPGgTMHBhfSjGBlITMQ/qe6CLTinWdxSbc4oDE=
 github.com/bclswl0827/travel v0.0.1 h1:nP903ucJuq7hWB1Upbzlh8zIZ4gFVHRpCi1xLnprvbw=
 github.com/bclswl0827/travel v0.0.1/go.mod h1:vvBD+hMgRQzgMYHvHMxdxWvc6FlVvXiKmbilUKaDRKE=
-github.com/bclswl0827/winsgo v0.0.0-20260719153703-3c070ca8c966 h1:OGfR+/42b04O9GDo5ub0CMHIDIMtBMceSZGRinySvXk=
-github.com/bclswl0827/winsgo v0.0.0-20260719153703-3c070ca8c966/go.mod h1:R9TBVY+n1nT7zsvP09n6MJ4pD6YigBZTZ2ZnLkPtHSE=
 github.com/bclswl0827/winsgo v0.0.1 h1:Ogn9NIkmygrPR7/651Pu5GkXcpSL4/lbQ/h0KLa8DKw=
 github.com/bclswl0827/winsgo v0.0.1/go.mod h1:R9TBVY+n1nT7zsvP09n6MJ4pD6YigBZTZ2ZnLkPtHSE=
 github.com/beevik/ntp v1.5.0 h1:y+uj/JjNwlY2JahivxYvtmv4ehfi3h74fAuABB9ZSM4=

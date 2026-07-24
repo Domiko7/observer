@@ -102,9 +102,7 @@ func (r *mutationResolver) PurgeSeisRecords(ctx context.Context) (*graph_model.P
 		return nil, errors.New("failed to create job tracker")
 	}
 
-	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "seis_records_full", func() error {
-		return r.ActionHandler.SeisRecordsPurgeAll()
-	})
+	jobCreateResponse := jobTracker.Start(r.TimeSource.Now(), "seis_records_full", r.ActionHandler.SeisRecordsPurgeAll)
 	return r.toPurgeDataJobResponse(jobCreateResponse), nil
 }
 

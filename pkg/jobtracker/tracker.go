@@ -22,10 +22,11 @@ func (t *Tracker) Start(now time.Time, kind string, fn func() error) *Job {
 	}
 
 	t.job = Job{
-		ID:        fmt.Sprintf("%d", now.UnixMilli()),
-		Kind:      kind,
-		Status:    JobStatusRunning,
-		StartedAt: &now,
+		ID:         fmt.Sprintf("%d", now.UnixMilli()),
+		Kind:       kind,
+		Status:     JobStatusRunning,
+		_startedAt: time.Now(),
+		StartedAt:  &now,
 	}
 	job := cloneJob(t.job)
 	t.mu.Unlock()
@@ -47,7 +48,9 @@ func (t *Tracker) finish(status JobStatus, err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	finishedAt := time.Now()
+	elapsed := time.Since(t.job._startedAt)
+	finishedAt := t.job.StartedAt.Add(elapsed)
+
 	t.job.Status = status
 	t.job.FinishedAt = &finishedAt
 	if err != nil {
