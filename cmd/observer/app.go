@@ -211,13 +211,13 @@ func appStart(ver *semver.Version, build *unibuild.UniBuild, args arguments) {
 		service_seedlink.ID:   service_seedlink.New(hardwareDevice, actionHandler, timeSrc),
 		service_watchcat.ID:   service_watchcat.New(hardwareDevice, timeSrc),
 		service_winston.ID:    service_winston.New(hardwareDevice, actionHandler, timeSrc),
-		service_discovery.ID:  service_discovery.New(conf.Server.Listen, actionHandler, timeSrc),
 	}
 	var upgradeHelper *upgrade.Helper
 	if !ver.IsPreRelease() && build.GetChannel() == officialBuildChannel {
 		upgradeHelper = upgrade.NewHelper(exePath, ver, build)
 		serviceMap[service_updater.ID] = service_updater.New(actionHandler, timeSrc, upgradeHelper, exePath, restartChan)
 	}
+	serviceMap[service_discovery.ID] = service_discovery.New(conf.Server.Listen, serviceMap, actionHandler, timeSrc)
 
 	for serviceName, serviceObj := range serviceMap {
 		if err = serviceObj.Init(); err != nil {

@@ -16,7 +16,7 @@ require (
 	github.com/bclswl0827/slgo v0.3.0
 	github.com/bclswl0827/sqlite v1.11.1-0.20240613172512-9e6ac9861470
 	github.com/bclswl0827/travel v0.0.1
-	github.com/bclswl0827/winsgo v0.0.0-20260719153703-3c070ca8c966
+	github.com/bclswl0827/winsgo v0.0.1
 	github.com/beevik/ntp v1.5.0
 	github.com/bwmarrin/snowflake v0.3.0
 	github.com/common-nighthawk/go-figure v0.0.0-20210622060536-734e95fb86be

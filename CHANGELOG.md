@@ -2,6 +2,27 @@
 
 Starting from v2.2.5, all notable changes to this project will be documented in this file.
 
+## v4.5.1
+
+### Release Notes
+
+This release delivers **helicorder performance improvements, extended data management controls, and mDNS service discovery enhancements**.
+
+The helicorder service gains a configurable waveform cache backend, allowing operators to choose between disk-based, in-memory, or disabled caching to match their deployment constraints. Data management now exposes a date-range purge operation, complementing the existing full-purge option with a more surgical approach to reclaiming storage. The mDNS discovery service is extended to optionally advertise SeedLink, Winston, and TCP forwarder endpoints, and now continuously monitors their runtime state to keep advertisements in sync with actual service availability.
+
+### New Features
+
+- Added **configurable helicorder cache storage mode**, supporting disk (indexed temporary files), memory, and disabled options.
+- Added **date-range data purge**, allowing seismic waveform records to be deleted by specifying a start and end date.
+- Extended **mDNS discovery** to optionally broadcast SeedLink, Winston Wave Server, and TCP forwarder service endpoints on the local network.
+- mDNS discovery now **periodically scans the runtime state** of advertised services, registering new entries when services come online, updating port advertisements when ports change, and unregistering entries when services go offline.
+
+### Improvements
+
+- Helicorder disk cache uses an indexed binary format, minimizing I/O during span lookups for historical waveform rendering.
+- Spectrogram color map is now **user-selectable** from an extended palette (viridis, inferno, grayscale, jet, hot, cool, spring, summer, autumn, winter, bone).
+- Date-range purge operations run with bounded concurrency across sharded waveform tables to avoid excessive database contention.
+
 ## v4.5.0
 
 ### Release Notes

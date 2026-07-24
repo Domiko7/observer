@@ -78,6 +78,10 @@ func (s *SeedLinkServiceImpl) Start() error {
 	return nil
 }
 
+func (s *SeedLinkServiceImpl) GetListenPort() int {
+	return s.listenPort
+}
+
 type provider struct {
 	hardwareDev   hardware.IHardware
 	timeSource    *timesource.Source

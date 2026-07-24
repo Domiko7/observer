@@ -18,5 +18,23 @@ func (s *DiscoveryServiceImpl) Init() error {
 	}
 	s.instanceName = instanceName.(string)
 
+	registerSeedLink, err := (&discoveryConfigRegisterSeedLinkImpl{}).Get(s.actionHandler)
+	if err != nil {
+		return err
+	}
+	s.registerSeedLink = registerSeedLink.(bool)
+
+	registerWinston, err := (&discoveryConfigRegisterWinstonImpl{}).Get(s.actionHandler)
+	if err != nil {
+		return err
+	}
+	s.registerWinston = registerWinston.(bool)
+
+	registerForwarder, err := (&discoveryConfigRegisterForwarderImpl{}).Get(s.actionHandler)
+	if err != nil {
+		return err
+	}
+	s.registerForwarder = registerForwarder.(bool)
+
 	return nil
 }

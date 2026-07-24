@@ -68,6 +68,7 @@ func (s *WinstonServiceImpl) Start() error {
 		},
 		&hooks{},
 	)
+	server.DisableHelicorder = true
 
 	err := s.hardwareDev.Subscribe(ID, func(t time.Time, dc *explorer.DeviceConfig, _ *explorer.DeviceVariable, data []explorer.ChannelData) {
 		s.ringBuffer.Push(winstonRingBuffer{
@@ -413,4 +414,8 @@ func (*hooks) OnClose(client *winsgo.Client) {
 }
 func (*hooks) OnCommand(client *winsgo.Client, command winsgo.Command) {
 	logger.GetLogger(ID).Infof("%s - client sent command to Winston service: %s", client.RemoteAddr(), command.Raw)
+}
+
+func (s *WinstonServiceImpl) GetListenPort() int {
+	return s.listenPort
 }

@@ -15,8 +15,12 @@ func (s *DiscoveryServiceImpl) Stop() error {
 
 	done := make(chan struct{})
 	go func() {
-		if s.server != nil {
-			s.server.Shutdown()
+		for _, reg := range []*mdnsRegistration{
+			s.httpReg, s.seedlinkReg, s.winstonReg, s.forwarderReg,
+		} {
+			if reg != nil && reg.server != nil {
+				reg.server.Shutdown()
+			}
 		}
 		s.wg.Wait()
 		close(done)

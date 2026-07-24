@@ -170,3 +170,7 @@ func (a *ForwarderServiceImpl) handleConnection(conn net.Conn) {
 		}
 	}
 }
+
+func (s *ForwarderServiceImpl) GetListenPort() int {
+	return s.listenPort
+}
