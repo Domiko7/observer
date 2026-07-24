@@ -33,7 +33,7 @@ func (t *Tracker) Start(now time.Time, kind string, fn func() error) *Job {
 
 	go func() {
 		if err := fn(); err != nil {
-			logger.GetLogger(t).Errorf("failed to run %s job %s: %v", job.Kind, job.ID, err)
+			logger.GetLogger("job_tracker").Errorf("failed to run %s job %s: %v", job.Kind, job.ID, err)
 			t.finish(JobStatusFailed, err)
 			return
 		}
