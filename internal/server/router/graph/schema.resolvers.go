@@ -75,7 +75,11 @@ func (r *mutationResolver) UpdateSysUser(ctx context.Context, userID string, use
 		if err := r.ActionHandler.SysUserCheckPassword(*password); err != nil {
 			return false, err
 		}
-		user.HashedPassword = user.GetHashedPassword(*password)
+		hashedPassword, err := user.GetHashedPassword(*password)
+		if err != nil {
+			return false, fmt.Errorf("failed to encode password: %w", err)
+		}
+		user.HashedPassword = hashedPassword
 	}
 
 	// Note that the admin itself cannot downgrade to a regular user
