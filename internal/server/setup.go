@@ -74,7 +74,9 @@ func (s *HttpServer) Setup(listen string) error {
 	auth.Setup(api, s.resolver.ActionHandler, jwtMiddlewareFn, jwtHandler.LoginHandler, jwtHandler.RefreshHandler)
 	export.Setup(api, s.resolver.ActionHandler, s.resolver.HardwareDev, jwtMiddlewareFn)
 	socket.Setup(api, s.resolver.TimeSource, s.resolver.HardwareDev, jwtMiddlewareFn)
-	files.Setup(api, s.resolver.ServiceMap, jwtMiddlewareFn)
+	if err := files.Setup(api, s.resolver.ServiceMap, jwtMiddlewareFn); err != nil {
+		return fmt.Errorf("failed to setup files router: %w", err)
+	}
 	tiles.Setup(api, s.resolver.CurrentVersion.String(), jwtMiddlewareFn)
 
 	graphql := handler.NewDefaultServer(graph_resolver.NewExecutableSchema(graph_resolver.Config{Resolvers: s.resolver}))

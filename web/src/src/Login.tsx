@@ -152,6 +152,7 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
             sessionIdBuffer
         );
 
+        const { nonce, hash } = await solvePoWChallenge(preAuthData.challenge_seed);
         const res = await ApiClient.request<{ token: string; life_time: number }>({
             url: getRestfulApiUrl('/auth'),
             method: 'post',
@@ -164,7 +165,7 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                 captcha_val: captcha,
                 captcha_id: preAuthData.captcha_id,
                 challenge_id: preAuthData.challenge_id,
-                challenge_solution: await solvePoWChallenge(preAuthData.challenge_seed)
+                challenge_solution: `${nonce}:${hash}`
             }
         });
         if (res.error) {

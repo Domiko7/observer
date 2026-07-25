@@ -4,95 +4,112 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/anyshake/observer/pkg/logger"
 	"github.com/dchest/captcha"
 )
 
+var (
+	errInvalidLoginRequest = errors.New("invalid login request")
+	errAuthenticationFailed = errors.New("authentication failed")
+)
+
 func (h *auth) login(sessionId, secret, nonce, challengeId, challengeSolution, captchaId, captchaVal, payload, userAgent, userIp string) (code int, userId string, err error) {
+	fail := func(status int, public error, internal string, args ...any) (int, string, error) {
+		if internal != "" {
+			logger.GetLogger(LOG_PREFIX).Errorf(internal, args...)
+		}
+		return status, "", public
+	}
+
 	if sessionId == "" || secret == "" || nonce == "" || challengeId == "" || challengeSolution == "" || captchaId == "" || captchaVal == "" || payload == "" {
-		return http.StatusBadRequest, "", errors.New("failed to login: missing required fields in request")
+		return fail(http.StatusBadRequest, errInvalidLoginRequest, "login rejected: missing required fields")
 	}
 
 	// 1. Check if the nonce is valid and not reused
 	nc, err := base64.StdEncoding.DecodeString(nonce)
 	if err != nil {
-		return http.StatusBadRequest, "", errors.New("failed to login: provided nonce is invalid")
+		return fail(http.StatusBadRequest, errInvalidLoginRequest, "login rejected: invalid nonce encoding: %v", err)
 	}
 	ncStr := string(nc)
 	if t, ok := h.nonceCache.Get(ncStr); ok && time.Since(t) <= time.Hour {
-		return http.StatusForbidden, "", errors.New("failed to login: replay attack detected")
+		return fail(http.StatusForbidden, errAuthenticationFailed, "login rejected: nonce replay detected")
 	}
 	h.nonceCache.Add(ncStr, time.Now())
 
 	// 2. Verify PoW challenge solution
 	challenge, ok := h.authChallengePool.GetAndDel(challengeId)
 	if !ok {
-		return http.StatusUnauthorized, "", errors.New("failed to login: invalid pre-auth challenge ID")
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: unknown challenge id")
 	}
 	if !challenge.isChallengeAlive() {
-		return http.StatusUnauthorized, "", errors.New("failed to login: pre-auth challenge has expired, please try again")
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: challenge expired")
 	}
-	if !challenge.verifyChallenge(challengeId, challengeSolution) {
-		return http.StatusUnauthorized, "", errors.New("failed to login: invalid challenge solution")
+	if !challenge.verifyChallenge(challengeSolution) {
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: invalid PoW solution")
 	}
 
 	// 3. Verify captcha solution
 	if !captcha.VerifyString(captchaId, captchaVal) {
-		return http.StatusUnauthorized, "", fmt.Errorf("failed to login: provided captcha solution %s is invalid", captchaVal)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: invalid captcha")
 	}
 
 	// 4. Extract RSA key pair from session ID
-	kp, ok := h.keyPairDataPool.GetAndDel(sessionId)
+	// Key pairs are shared across preauth requests within TTL, so do not delete on use.
+	kp, ok := h.keyPairDataPool.Get(sessionId)
 	if !ok {
-		return http.StatusUnauthorized, "", errors.New("failed to login: provided session ID is invalid")
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: unknown session id")
 	}
 	if !kp.isKeyPairAlive() {
-		return http.StatusUnauthorized, "", errors.New("failed to login: provided session ID has expired")
+		h.keyPairDataPool.Del(sessionId)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: session expired")
 	}
 
 	// 5. Attempt to decrypt RSA encrypted AES secret from payload
 	aesSecretBytesB64, err := kp.rsaKeyPair.Decrypt([]byte(secret), true)
 	if err != nil {
-		return http.StatusUnauthorized, "", fmt.Errorf("failed to login: failed to decrypt secret: %w", err)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: secret decrypt failed: %v", err)
 	}
 	aesSecretBytes, err := base64.StdEncoding.DecodeString(string(aesSecretBytesB64))
 	if err != nil {
-		return http.StatusUnauthorized, "", fmt.Errorf("failed to login: failed to decode secret: %w", err)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: secret decode failed: %v", err)
 	}
 	encryptor := newAES256GCM(aesSecretBytes)
+	if encryptor == nil {
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: failed to init AES-GCM")
+	}
 
 	// 6. Additional check to ensure data integrity (defense in depth)
 	if _, err := encryptor.decrypt(nc, []byte(sessionId)); err != nil {
-		return http.StatusForbidden, "", fmt.Errorf("failed to login: malformed nonce received: %w", err)
+		return fail(http.StatusForbidden, errAuthenticationFailed, "login rejected: malformed nonce: %v", err)
 	}
 
 	// 7. Attempt to decrypt AES encrypted payload containing credential
 	pl, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
-		return http.StatusBadRequest, "", errors.New("failed to login: provided payload is invalid")
+		return fail(http.StatusBadRequest, errInvalidLoginRequest, "login rejected: invalid payload encoding: %v", err)
 	}
 	credential, err := encryptor.decrypt(pl, []byte(sessionId))
 	if err != nil {
-		return http.StatusUnauthorized, "", fmt.Errorf("failed to login: failed to decrypt payload: %w", err)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: payload decrypt failed: %v", err)
 	}
 
 	// 8. Unmarshal credential and perform login logic
 	var credentialMap map[string]any
 	if err = json.Unmarshal(credential, &credentialMap); err != nil {
-		return http.StatusUnauthorized, "", fmt.Errorf("failed to login: failed to unmarshal payload: %w", err)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: credential unmarshal failed: %v", err)
 	}
 	username, usernameOk := credentialMap["username"].(string)
 	password, passwordOk := credentialMap["password"].(string)
 	if !usernameOk || !passwordOk {
-		return http.StatusUnauthorized, "", errors.New("failed to login: provided credential format is invalid")
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: credential format invalid")
 	}
 
 	userId, err = h.actionHandler.SysUserLogin(username, password, userAgent, userIp)
 	if err != nil {
-		return http.StatusUnauthorized, "", fmt.Errorf("user login failed: %w", err)
+		return fail(http.StatusUnauthorized, errAuthenticationFailed, "login rejected: user auth failed for %s: %v", username, err)
 	}
 
 	return http.StatusOK, userId, nil

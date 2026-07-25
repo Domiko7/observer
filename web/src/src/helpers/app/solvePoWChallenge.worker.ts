@@ -17,5 +17,5 @@ self.addEventListener('message', ({ data }) => {
         nonce++;
     } while (hashHex.slice(0, difficulty) !== '0'.repeat(difficulty));
 
-    self.postMessage(hashHex);
+    self.postMessage({ nonce: nonce - 1, hash: hashHex });
 });

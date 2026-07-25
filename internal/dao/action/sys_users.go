@@ -97,14 +97,17 @@ func (h *Handler) SysUserCreate(username, password string, isAdmin bool) (string
 		IsAdmin:  strconv.FormatBool(isAdmin),
 		Username: username,
 	}
-	user.HashedPassword = user.GetHashedPassword(password)
+	hashedPassword, err := user.GetHashedPassword(password)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode password: %w", err)
+	}
+	user.HashedPassword = hashedPassword
 	user.UserId = user.NewUserId()
 
-	err := h.daoObj.Database.
+	if err = h.daoObj.Database.
 		Table(user.GetName(h.daoObj.GetPrefix())).
 		Save(&user).
-		Error
-	if err != nil {
+		Error; err != nil {
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 

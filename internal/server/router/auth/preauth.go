@@ -3,6 +3,7 @@ package auth
 import (
 	"bytes"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,13 +11,51 @@ import (
 	"github.com/dchest/captcha"
 )
 
-func (h *auth) preAuth(ttl time.Duration) (code int, msg string, res any, err error) {
+func (h *auth) cleanupExpiredAuthState() {
+	for key, pair := range h.keyPairDataPool.Iterator() {
+		if !pair.isKeyPairAlive() {
+			h.keyPairDataPool.Del(key)
+		}
+	}
+	for key, attempt := range h.authChallengePool.Iterator() {
+		if !attempt.isChallengeAlive() {
+			h.authChallengePool.Del(key)
+		}
+	}
+}
+
+func (h *auth) getSharedKeyPair(ttl time.Duration) (*keyPair, error) {
+	h.keyPairMu.Lock()
+	defer h.keyPairMu.Unlock()
+
+	for key, pair := range h.keyPairDataPool.Iterator() {
+		if pair.isKeyPairAlive() {
+			return pair, nil
+		}
+		h.keyPairDataPool.Del(key)
+	}
+
 	kp, err := newKeyPair(ttl)
+	if err != nil {
+		return nil, err
+	}
+	h.keyPairDataPool.Set(kp.getKeyPairId(), kp)
+	return kp, nil
+}
+
+func (h *auth) preAuth(ttl time.Duration) (code int, msg string, res any, err error) {
+	h.cleanupExpiredAuthState()
+
+	if h.authChallengePool.Len() >= maxPendingChallenges {
+		errText := "too many pending login challenges"
+		return http.StatusServiceUnavailable, errText, nil, errors.New(errText)
+	}
+
+	kp, err := h.getSharedKeyPair(sharedKeyPairTTL)
 	if err != nil {
 		errText := "failed to generate new RSA key pair"
 		return http.StatusInternalServerError, errText, nil, fmt.Errorf("%s: %w", errText, err)
 	}
-	h.keyPairDataPool.Set(kp.getKeyPairId(), kp)
 
 	_, pemPubKey, err := kp.rsaKeyPair.GetPEM(true)
 	if err != nil {

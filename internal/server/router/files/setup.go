@@ -10,8 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Setup(routerGroup *gin.RouterGroup, serviceMap map[string]service.IService, jwtMiddleware gin.HandlerFunc) {
-	secretKey, _ := getSecretKey(32)
+func Setup(routerGroup *gin.RouterGroup, serviceMap map[string]service.IService, jwtMiddleware gin.HandlerFunc) error {
+	secretKey, err := getSecretKey(32)
+	if err != nil {
+		return fmt.Errorf("failed to generate file download secret: %w", err)
+	}
 
 	routerGroup.POST("/files", jwtMiddleware, func(ctx *gin.Context) {
 		var requestModel struct {
@@ -51,4 +54,6 @@ func Setup(routerGroup *gin.RouterGroup, serviceMap map[string]service.IService,
 		}
 		response.Blob(ctx, asset.FileName, asset.ContentType, asset.Data)
 	})
+
+	return nil
 }
