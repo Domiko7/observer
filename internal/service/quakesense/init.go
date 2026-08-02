@@ -2,9 +2,17 @@ package quakesense
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/anyshake/observer/config"
 )
+
+func (s *QuakeSenseServiceImpl) validateFinite(name string, value float64) error {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return fmt.Errorf("%s must be finite", name)
+	}
+	return nil
+}
 
 func (s *QuakeSenseServiceImpl) Init() error {
 	s.mu.Lock()
@@ -124,8 +132,20 @@ func (s *QuakeSenseServiceImpl) Init() error {
 	}
 	s.ltaWindow = ltaWindow.(float64)
 
+	if err := s.validateFinite("STA window", s.staWindow); err != nil || s.staWindow <= 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("STA window must be positive")
+	}
+	if err := s.validateFinite("LTA window", s.ltaWindow); err != nil || s.ltaWindow <= 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("LTA window must be positive")
+	}
 	if s.ltaWindow <= s.staWindow {
-		return fmt.Errorf("LTA window cannot be smaller than STA window")
+		return fmt.Errorf("LTA window must be greater than STA window")
 	}
 
 	trigOn, err := (&quakeSenseConfigTrigOnImpl{}).Get(s.actionHandler)
@@ -139,6 +159,21 @@ func (s *QuakeSenseServiceImpl) Init() error {
 		return fmt.Errorf("failed to get quakeSense trigger off: %w", err)
 	}
 	s.trigOff = trigOff.(float64)
+	if err := s.validateFinite("trigger on value", s.trigOn); err != nil || s.trigOn <= 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("trigger on value must be positive")
+	}
+	if err := s.validateFinite("trigger off value", s.trigOff); err != nil || s.trigOff <= 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("trigger off value must be positive")
+	}
+	if s.trigOn <= s.trigOff {
+		return fmt.Errorf("trigger on value must be greater than trigger off value")
+	}
 
 	filterType, err := (&quakeSenseConfigFilterTypeImpl{}).Get(s.actionHandler)
 	if err != nil {
@@ -157,6 +192,35 @@ func (s *QuakeSenseServiceImpl) Init() error {
 		return fmt.Errorf("failed to get quakeSense min frequency: %w", err)
 	}
 	s.minFreq = minFreq.(float64)
+	if err := s.validateFinite("minimum frequency", s.minFreq); err != nil || s.minFreq < 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("minimum frequency cannot be negative")
+	}
+	if err := s.validateFinite("maximum frequency", s.maxFreq); err != nil || s.maxFreq < 0 {
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("maximum frequency cannot be negative")
+	}
+	switch s.filterType {
+	case BAND_PASS_FILTER:
+		if s.minFreq <= 0 || s.maxFreq <= s.minFreq {
+			return fmt.Errorf("band-pass filter requires 0 < minimum frequency < maximum frequency")
+		}
+	case LOW_PASS_FILTER:
+		if s.maxFreq <= 0 {
+			return fmt.Errorf("low-pass filter requires a positive maximum frequency")
+		}
+	case HIGH_PASS_FILTER:
+		if s.minFreq <= 0 {
+			return fmt.Errorf("high-pass filter requires a positive minimum frequency")
+		}
+	case NO_FILTER:
+	default:
+		return fmt.Errorf("invalid filter type: %s", s.filterType)
+	}
 
 	return nil
 }

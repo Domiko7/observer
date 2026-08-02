@@ -8,10 +8,10 @@ require (
 	github.com/alphadose/haxmap v1.4.1
 	github.com/ameshkov/dnscrypt/v2 v2.4.0
 	github.com/appleboy/gin-jwt/v2 v2.10.1
-	github.com/bclswl0827/eewgo v0.1.1
 	github.com/bclswl0827/go-serial v0.0.1
 	github.com/bclswl0827/heligo v0.2.0
 	github.com/bclswl0827/mseedio v1.2.0
+	github.com/bclswl0827/obsgo v1.0.0
 	github.com/bclswl0827/sacio v1.0.6
 	github.com/bclswl0827/slgo v0.3.0
 	github.com/bclswl0827/sqlite v1.11.1-0.20240613172512-9e6ac9861470
