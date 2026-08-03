@@ -9,6 +9,7 @@ import (
 	"unicode"
 
 	"github.com/anyshake/observer/internal/dao/model"
+	"gorm.io/gorm"
 )
 
 type SettingType string
@@ -142,12 +143,16 @@ func (h *Handler) SettingsInit(namespace, key string, valueType SettingType, ver
 	}
 
 	settingsVal, readValueType, versionDB, err := h.SettingsGet(namespace, key)
-	if settingsVal != nil && valueType == readValueType && err == nil {
-		return false, nil
-	}
+	if err == nil {
+		if settingsVal != nil && valueType == readValueType {
+			return false, nil
+		}
 
-	if versionDB != version {
-		return true, nil
+		if versionDB != version {
+			return true, nil
+		}
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return false, err
 	}
 
 	err = h.SettingsSet(namespace, key, valueType, version, value)
