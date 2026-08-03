@@ -2,6 +2,28 @@
 
 Starting from v2.2.5, all notable changes to this project will be documented in this file.
 
+## v4.5.2
+
+### Release Notes
+
+This release focuses on **authentication hardening, file access security, and service reliability**. The authentication flow now uses stronger cryptographic safeguards and bounded in-memory state, while waveform asset access validates paths and symlinks more strictly. QuakeSense processing gains broader trigger and filter support with stronger configuration validation, and several startup, timing, and build issues are resolved.
+
+### Improvements
+
+- Hardened authentication and bounded in-memory login state for improved security and reliability.
+- Strengthened waveform asset access validation and file router error handling.
+- Replaced the QuakeSense signal-processing dependency and added support for classic, delayed, and recursive STA/LTA triggers, Z-detection, and IIR filters.
+- Added validation for finite and valid QuakeSense windows, trigger thresholds, frequency ranges, filter types, and sample rates.
+- Improved QuakeSense event timestamp calculation, MQTT option handling, and cleanup after service termination.
+- Made Job Tracker completion timestamps consistent with the configured time source and corrected its logger module name.
+- Updated Go dependencies and the Node.js setup action used by CI and Docker workflows.
+
+### Bug Fixes
+
+- Fixed initialization of missing settings whose configuration version is non-zero.
+- Fixed password hashing error handling during user creation and password updates.
+- Fixed a GraphQL build failure caused by the password hashing API update.
+
 ## v4.5.1
 
 ### Release Notes
