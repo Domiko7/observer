@@ -97,14 +97,17 @@ func (h *Handler) SysUserCreate(username, password string, isAdmin bool) (string
 		IsAdmin:  strconv.FormatBool(isAdmin),
 		Username: username,
 	}
-	user.HashedPassword = user.GetHashedPassword(password)
+	hashedPassword, err := user.GetHashedPassword(password)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode password: %w", err)
+	}
+	user.HashedPassword = hashedPassword
 	user.UserId = user.NewUserId()
 
-	err := h.daoObj.Database.
+	if err = h.daoObj.Database.
 		Table(user.GetName(h.daoObj.GetPrefix())).
 		Save(&user).
-		Error
-	if err != nil {
+		Error; err != nil {
 		return "", fmt.Errorf("failed to create user: %w", err)
 	}
 
@@ -118,7 +121,7 @@ func (h *Handler) SysUserLogin(username, password, userAgent, userIp string) (us
 
 	user, err := h.SysUserGetByUsername(username)
 	if err != nil {
-		return "", fmt.Errorf("failed to get user info: %w", err)
+		return "", err
 	}
 
 	if !user.IsPasswordCorrect(password) {
@@ -129,7 +132,7 @@ func (h *Handler) SysUserLogin(username, password, userAgent, userIp string) (us
 		user.LastLogin = time.Now().UnixMilli()
 		user.UserAgent = userAgent
 		user.UserIp = userIp
-		err = h.SysUserUpdte(user.UserId, user)
+		err = h.SysUserUpdate(user.UserId, user)
 		if err != nil {
 			return "", fmt.Errorf("failed to update login status: %w", err)
 		}
@@ -138,7 +141,7 @@ func (h *Handler) SysUserLogin(username, password, userAgent, userIp string) (us
 	return user.UserId, nil
 }
 
-func (h *Handler) SysUserUpdte(userId string, user model.SysUser) error {
+func (h *Handler) SysUserUpdate(userId string, user model.SysUser) error {
 	if h.daoObj == nil {
 		return errors.New("database is not opened")
 	}

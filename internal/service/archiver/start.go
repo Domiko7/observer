@@ -2,9 +2,11 @@ package archiver
 
 import (
 	"context"
+	"errors"
 	"runtime/debug"
 	"time"
 
+	"github.com/anyshake/observer/internal/dao/action"
 	"github.com/anyshake/observer/internal/dao/model"
 	"github.com/anyshake/observer/internal/hardware/explorer"
 	"github.com/anyshake/observer/pkg/logger"
@@ -12,6 +14,35 @@ import (
 
 func (s *ArchiverServiceImpl) handleInterrupt() {
 	s.wg.Done()
+}
+
+func (s *ArchiverServiceImpl) startExpiredSeisRecordsPurge(endTime time.Time) {
+	if !s.cleanupRunning.CompareAndSwap(false, true) {
+		logger.GetLogger(ID).Infoln("skipped expired seismic waveform records purge because previous archiver cleanup task is still running")
+		return
+	}
+
+	go s.purgeExpiredSeisRecords(endTime)
+}
+
+func (s *ArchiverServiceImpl) purgeExpiredSeisRecords(endTime time.Time) {
+	defer s.cleanupRunning.Store(false)
+	defer func() {
+		if r := recover(); r != nil {
+			logger.GetLogger(ID).Errorf("expired seismic waveform records purge unexpectly crashed, recovered from panic: %v\n%s", r, debug.Stack())
+		}
+	}()
+
+	if err := s.actionHandler.SeisRecordsPurge(time.Unix(0, 0), endTime); err != nil {
+		if errors.Is(err, action.ErrCleanupRunning) {
+			logger.GetLogger(ID).Infoln("skipped expired seismic waveform records purge because another cleanup task is running")
+			return
+		}
+
+		logger.GetLogger(ID).Errorf("failed to purge expired seismic waveform records: %v", err)
+		return
+	}
+	logger.GetLogger(ID).Infoln("expired seismic waveform records have been purged from database")
 }
 
 func (s *ArchiverServiceImpl) Start() error {
@@ -43,7 +74,7 @@ func (s *ArchiverServiceImpl) Start() error {
 
 			record := model.SeisRecord{}
 			if err := record.Encode(t, di.GetSampleRate(), cd); err != nil {
-				logger.GetLogger(ID).Errorf("failed to encode siesmic waveform record: %v", err)
+				logger.GetLogger(ID).Errorf("failed to encode seismic waveform record: %v", err)
 				return
 			}
 			s.recordBuffer[len(s.recordBuffer)-s.insertCountDown] = record
@@ -56,19 +87,15 @@ func (s *ArchiverServiceImpl) Start() error {
 			if s.insertCountDown == 0 {
 				s.insertCountDown = RECORDS_INSERT_INTERVAL
 				if err := s.actionHandler.SeisRecordsCreate(s.recordBuffer...); err != nil {
-					logger.GetLogger(ID).Errorf("failed to create siesmic waveform records: %v", err)
+					logger.GetLogger(ID).Errorf("failed to create seismic waveform records: %v", err)
 					return
 				}
-				logger.GetLogger(ID).Infof("%d siesmic waveform records have been inserted to database", len(s.recordBuffer))
+				logger.GetLogger(ID).Infof("%d seismic waveform records have been inserted to database", len(s.recordBuffer))
 			}
 			if s.cleanupCountDown == 0 {
 				s.cleanupCountDown = RECORDS_CLEANUP_INTERVAL
 				endTime := t.Add(time.Duration(-s.rotation) * time.Hour * 24)
-				if err := s.actionHandler.SeisRecordsPurge(time.Unix(0, 0), endTime); err != nil {
-					logger.GetLogger(ID).Errorf("failed to purge expired siesmic waveform records: %v", err)
-					return
-				}
-				logger.GetLogger(ID).Infoln("expired siesmic waveform records have been purged from database")
+				s.startExpiredSeisRecordsPurge(endTime)
 			}
 		})
 		if err != nil {

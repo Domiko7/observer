@@ -1,13 +1,78 @@
 mutation purgeSeisRecords {
-    purgeSeisRecords
+    purgeSeisRecords {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
+}
+
+mutation purgeSeisRecordsByDate($startDate: Int64!, $endDate: Int64!) {
+    purgeSeisRecordsByDate(startDate: $startDate, endDate: $endDate) {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
+}
+
+query getCleanupStatus {
+    getCleanupStatus {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
 }
 
 mutation purgeMiniSeedFiles {
-    purgeMiniSeedFiles
+    purgeMiniSeedFiles {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
+}
+
+mutation purgeMiniSeedFilesByDate($startDate: Int64!, $endDate: Int64!) {
+    purgeMiniSeedFilesByDate(startDate: $startDate, endDate: $endDate) {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
 }
 
 mutation purgeHelicorderFiles {
-    purgeHelicorderFiles
+    purgeHelicorderFiles {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
+}
+
+mutation purgeHelicorderFilesByDate($startDate: Int64!, $endDate: Int64!) {
+    purgeHelicorderFilesByDate(startDate: $startDate, endDate: $endDate) {
+        id
+        kind
+        status
+        startedAt
+        finishedAt
+        error
+    }
 }
 
 mutation restoreStationConfig {

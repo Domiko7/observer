@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"os"
 )
 
 type arguments struct {
@@ -15,11 +14,6 @@ func parseCommandLine() (args arguments) {
 	flag.StringVar(&args.configPath, "config", "./config.json", "Path to config file")
 
 	flag.Parse()
-
-	if args.showVersion {
-		PrintVersion()
-		os.Exit(0)
-	}
 
 	return args
 }

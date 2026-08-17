@@ -1,0 +1,396 @@
+import { mdiClose, mdiCog, mdiMagnifyMinus, mdiMagnifyPlus } from '@mdi/js';
+import Icon from '@mdi/react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ColorMapName, FFTExecutor } from 'spectrogram-js';
+import { Spectrogram as SpectrogramCore } from 'spectrogram-js';
+
+import {
+    DEFAULT_SPECTROGRAM_COLOR_MAP,
+    SPECTROGRAM_COLOR_MAPS
+} from './spectrogramColorMaps';
+
+interface ISpectrogram {
+    readonly title?: string;
+    readonly sampleRate: number;
+    readonly freqRange: [number, number];
+    readonly duration: number;
+    readonly minDB: number;
+    readonly maxDB: number;
+    readonly windowSize: number;
+    readonly overlap: number;
+    readonly data: [number, number][];
+    readonly colorMap?: ColorMapName;
+    readonly fftExecutor?: FFTExecutor;
+    readonly renderFPS?: number;
+    readonly zoomStep?: number;
+    readonly onSpectrogramUpdate?: (minDB: number, maxDB: number, colorMap: ColorMapName) => void;
+}
+
+export const Spectrogram = memo(
+    ({
+        title,
+        sampleRate,
+        minDB,
+        maxDB,
+        freqRange,
+        duration,
+        windowSize,
+        overlap,
+        data,
+        colorMap = DEFAULT_SPECTROGRAM_COLOR_MAP,
+        fftExecutor,
+        renderFPS = 2,
+        zoomStep = 0.2,
+        onSpectrogramUpdate
+    }: ISpectrogram) => {
+        const { t } = useTranslation();
+
+        const [showSettings, setShowSettings] = useState(false);
+        const [minDBState, setMinDBState] = useState(minDB);
+        const [maxDBState, setMaxDBState] = useState(maxDB);
+        const [zoomDuration, setZoomDuration] = useState(duration);
+        const [colormap, setColormap] = useState<ColorMapName>(colorMap);
+
+        const [initializedSpectrogram, setInitializedSpectrogram] =
+            useState<SpectrogramCore | null>(null);
+        const spectrogramRef = useRef<SpectrogramCore | null>(null);
+        useEffect(() => {
+            setInitializedSpectrogram(null);
+            const sp = new SpectrogramCore({
+                sampleRate,
+                windowSize,
+                overlap,
+                fftExecutor,
+                minDb: minDB,
+                maxDb: maxDB,
+                windowType: 'hann'
+            });
+            spectrogramRef.current = sp;
+            sp.init().then(() => {
+                if (spectrogramRef.current !== sp) {
+                    return;
+                }
+                setInitializedSpectrogram(sp);
+            });
+            return () => {
+                sp.destroy();
+                if (spectrogramRef.current === sp) {
+                    spectrogramRef.current = null;
+                }
+            };
+        }, [fftExecutor, maxDB, minDB, overlap, sampleRate, windowSize]);
+
+        useEffect(() => {
+            setColormap(colorMap);
+        }, [colorMap]);
+
+        const canvasRef = useRef<HTMLCanvasElement>(null);
+        const sizeRef = useRef({ width: 1, height: 1 });
+        useEffect(() => {
+            const canvas = canvasRef.current;
+            if (!canvas || !canvas.parentElement) {
+                return;
+            }
+
+            const ro = new ResizeObserver(([entry]) => {
+                const { width, height } = entry.contentRect;
+                sizeRef.current.width = Math.max(0, Math.floor(width));
+                sizeRef.current.height = Math.max(0, Math.floor(height));
+            });
+
+            ro.observe(canvas.parentElement);
+            return () => ro.disconnect();
+        }, []);
+
+        const [timePercent, setTimePercent] = useState(0.5);
+        const dataDuration = useMemo<number | null>(() => {
+            if (data.length === 0) {
+                return null;
+            }
+            return (data[data.length - 1][0] - data[0][0]) / 1000;
+        }, [data]);
+
+        const renderSpectrogram = useCallback(() => {
+            const canvas = canvasRef.current;
+            const sp = spectrogramRef.current;
+            if (!canvas || !sp || initializedSpectrogram !== sp) {
+                return;
+            }
+
+            const { width, height } = sizeRef.current;
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+
+            const total = dataDuration ?? 0;
+            const window = zoomDuration;
+            const maxStart = Math.max(0, total - window);
+            const start = maxStart * timePercent;
+            const end = start + window;
+            sp.render({
+                canvas,
+                width,
+                height,
+                timeRange: [start, end],
+                freqRange
+            });
+        }, [dataDuration, freqRange, initializedSpectrogram, timePercent, zoomDuration]);
+
+        const pendingRenderRef = useRef<number | null>(null);
+        const requestSpectrogramRender = useCallback(() => {
+            if (pendingRenderRef.current !== null) {
+                return;
+            }
+            pendingRenderRef.current = requestAnimationFrame(() => {
+                pendingRenderRef.current = null;
+                renderSpectrogram();
+            });
+        }, [renderSpectrogram]);
+
+        useEffect(
+            () => () => {
+                if (pendingRenderRef.current !== null) {
+                    cancelAnimationFrame(pendingRenderRef.current);
+                    pendingRenderRef.current = null;
+                }
+            },
+            [requestSpectrogramRender]
+        );
+
+        useEffect(() => {
+            if (!initializedSpectrogram) {
+                return;
+            }
+
+            const frameInterval = 1000 / renderFPS;
+            const intervalId = window.setInterval(requestSpectrogramRender, frameInterval);
+            requestSpectrogramRender();
+            return () => window.clearInterval(intervalId);
+        }, [initializedSpectrogram, renderFPS, requestSpectrogramRender]);
+
+        useEffect(() => {
+            if (!initializedSpectrogram || spectrogramRef.current !== initializedSpectrogram) {
+                return;
+            }
+
+            initializedSpectrogram.setData(data);
+            requestSpectrogramRender();
+        }, [data, initializedSpectrogram, requestSpectrogramRender]);
+
+        useEffect(() => {
+            if (!initializedSpectrogram || spectrogramRef.current !== initializedSpectrogram) {
+                return;
+            }
+
+            initializedSpectrogram.setColormap(colormap);
+            requestSpectrogramRender();
+        }, [colormap, initializedSpectrogram, requestSpectrogramRender]);
+
+        const handlePreviewMinDB = useCallback((value: number) => {
+            setMinDBState(value);
+            setMaxDBState((prev) => (value > prev ? value : prev));
+        }, []);
+
+        const handleApplyMinDB = useCallback(
+            (value: number) => {
+                spectrogramRef.current?.updateConfig({
+                    minDb: value,
+                    maxDb: Math.max(value, maxDBState)
+                });
+                onSpectrogramUpdate?.(value, Math.max(value, maxDBState), colormap);
+            },
+            [colormap, maxDBState, onSpectrogramUpdate, spectrogramRef]
+        );
+
+        const handlePreviewMaxDB = useCallback((value: number) => {
+            setMaxDBState(value);
+            setMinDBState((prev) => (value < prev ? value : prev));
+        }, []);
+
+        const handleApplyMaxDB = useCallback(
+            (value: number) => {
+                spectrogramRef.current?.updateConfig({
+                    minDb: Math.min(value, minDBState),
+                    maxDb: value
+                });
+                onSpectrogramUpdate?.(Math.min(value, minDBState), value, colormap);
+            },
+            [colormap, minDBState, onSpectrogramUpdate, spectrogramRef]
+        );
+
+        const handleToggleColormap = useCallback(() => {
+            const currentIndex = SPECTROGRAM_COLOR_MAPS.indexOf(colormap);
+            const nextIndex = (currentIndex + 1) % SPECTROGRAM_COLOR_MAPS.length;
+            const next = SPECTROGRAM_COLOR_MAPS[nextIndex];
+            setColormap(next);
+            onSpectrogramUpdate?.(minDBState, maxDBState, next);
+        }, [colormap, maxDBState, minDBState, onSpectrogramUpdate]);
+
+        const handleZoomIn = useCallback(() => {
+            if (dataDuration) {
+                setZoomDuration((prev) => {
+                    const next = prev * (1 - zoomStep);
+                    return Math.max(next, dataDuration * 0.01);
+                });
+            }
+        }, [dataDuration, zoomStep]);
+
+        const handleZoomOut = useCallback(() => {
+            if (dataDuration) {
+                setZoomDuration((prev) => {
+                    const next = prev * (1 + zoomStep);
+                    return Math.min(next, dataDuration);
+                });
+            }
+        }, [dataDuration, zoomStep]);
+
+        return (
+            <div className="relative flex h-full w-full flex-col">
+                <canvas className="block" ref={canvasRef} />
+
+                <div className="absolute top-5 left-15 mr-15 flex flex-wrap items-center gap-1">
+                    {title && (
+                        <div className="flex h-6 items-center rounded bg-black/50 px-3 text-sm font-bold text-white select-none">
+                            {title}
+                        </div>
+                    )}
+
+                    <button
+                        className="flex size-6 flex-shrink-0 cursor-pointer items-center justify-center rounded bg-black/50 text-white opacity-50 transition-all hover:opacity-100"
+                        onClick={() => setShowSettings((v) => !v)}
+                    >
+                        <Icon path={mdiCog} size={0.7} />
+                    </button>
+
+                    <button
+                        className="flex h-6 min-w-12 flex-shrink-0 cursor-pointer items-center justify-center rounded bg-black/50 px-2 text-xs font-semibold text-white opacity-50 transition-all hover:opacity-100"
+                        onClick={handleToggleColormap}
+                    >
+                        {colormap}
+                    </button>
+
+                    <button
+                        className="flex size-6 flex-shrink-0 cursor-pointer items-center justify-center rounded bg-black/50 text-white opacity-50 transition-all hover:opacity-100"
+                        onClick={handleZoomIn}
+                    >
+                        <Icon path={mdiMagnifyPlus} size={0.7} />
+                    </button>
+
+                    <button
+                        className="flex size-6 flex-shrink-0 cursor-pointer items-center justify-center rounded bg-black/50 text-white opacity-50 transition-all hover:opacity-100"
+                        onClick={handleZoomOut}
+                    >
+                        <Icon path={mdiMagnifyMinus} size={0.7} />
+                    </button>
+
+                    <div className="flex h-6 max-w-36 items-center rounded bg-black/50 opacity-50 transition-all hover:opacity-100">
+                        <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={timePercent}
+                            onChange={({ target }) => setTimePercent(Number(target.value))}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
+                            className="range range-xs rounded py-3 pl-2 text-gray-300 [--range-bg:#fff] [--range-fill:0]"
+                        />
+                        <span className="px-2 font-mono text-xs text-white select-none">
+                            {(timePercent * 100).toFixed(0)}%
+                        </span>
+                    </div>
+                </div>
+
+                {showSettings && (
+                    <div
+                        className="absolute inset-0 z-10 flex cursor-default items-center justify-center rounded-md bg-black/50"
+                        onClick={() => setShowSettings(false)}
+                    >
+                        <div className="max-h-full w-full overflow-y-auto px-4 py-2">
+                            <div
+                                className="mx-auto w-64 space-y-4 rounded bg-black/90 p-4 text-xs text-white"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <div className="flex justify-between text-sm font-bold">
+                                    <span>{t('components.Spectrogram.settings.title')}</span>
+                                    <button onClick={() => setShowSettings(false)}>
+                                        <Icon path={mdiClose} size={0.6} />
+                                    </button>
+                                </div>
+
+                                <>
+                                    <div className="mb-1 flex justify-between">
+                                        <span>{t('components.Spectrogram.settings.min_db')}</span>
+                                        <span>{minDBState}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={-250}
+                                        max={250}
+                                        step={2}
+                                        value={minDBState}
+                                        className="range range-info range-sm w-full"
+                                        onChange={({ target }) =>
+                                            handlePreviewMinDB(Number(target.value))
+                                        }
+                                        onMouseUp={(e) => {
+                                            handleApplyMinDB(minDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onMouseDown={(e) => {
+                                            handleApplyMinDB(minDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onTouchStart={(e) => {
+                                            handleApplyMinDB(minDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            handleApplyMinDB(minDBState);
+                                            e.stopPropagation();
+                                        }}
+                                    />
+                                </>
+
+                                <>
+                                    <div className="mb-1 flex justify-between">
+                                        <span>{t('components.Spectrogram.settings.max_db')}</span>
+                                        <span>{maxDBState}</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min={-250}
+                                        max={250}
+                                        step={2}
+                                        value={maxDBState}
+                                        className="range range-info range-sm w-full"
+                                        onChange={({ target }) =>
+                                            handlePreviewMaxDB(Number(target.value))
+                                        }
+                                        onMouseUp={(e) => {
+                                            handleApplyMaxDB(maxDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onMouseDown={(e) => {
+                                            handleApplyMaxDB(maxDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onTouchStart={(e) => {
+                                            handleApplyMaxDB(maxDBState);
+                                            e.stopPropagation();
+                                        }}
+                                        onTouchEnd={(e) => {
+                                            handleApplyMaxDB(maxDBState);
+                                            e.stopPropagation();
+                                        }}
+                                    />
+                                </>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+);

@@ -28,7 +28,7 @@ export const sendUserConfirm = (
                         </div>
                     </div>
                 </div>
-                <div className="m-2 flex items-center justify-center gap-2">
+                <div className="m-6 flex items-center justify-center gap-2">
                     <button
                         onClick={() => {
                             toast.dismiss(id);

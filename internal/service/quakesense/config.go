@@ -27,7 +27,7 @@ func (s *quakeSenseConfigEnabledImpl) GetDescription() string {
 }
 func (s *quakeSenseConfigEnabledImpl) Init(handler *action.Handler) error {
 	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to set default QuakeSense service availablity: %w", err)
+		return fmt.Errorf("failed to set default QuakeSense service availability: %w", err)
 	}
 	return nil
 }
@@ -37,14 +37,14 @@ func (s *quakeSenseConfigEnabledImpl) Set(handler *action.Handler, newVal any) e
 		return err
 	}
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), enabled); err != nil {
-		return fmt.Errorf("failed to set QuakeSense service availablity: %w", err)
+		return fmt.Errorf("failed to set QuakeSense service availability: %w", err)
 	}
 	return nil
 }
 func (s *quakeSenseConfigEnabledImpl) Get(handler *action.Handler) (any, error) {
 	val, _, _, err := handler.SettingsGet(s.GetNamespace(), s.GetKey())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get QuakeSense service availablity: %w", err)
+		return nil, fmt.Errorf("failed to get QuakeSense service availability: %w", err)
 	}
 	enabled, ok := val.(bool)
 	if !ok {
@@ -54,7 +54,7 @@ func (s *quakeSenseConfigEnabledImpl) Get(handler *action.Handler) (any, error) 
 }
 func (s *quakeSenseConfigEnabledImpl) Restore(handler *action.Handler) error {
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to reset QuakeSense service availablity: %w", err)
+		return fmt.Errorf("failed to reset QuakeSense service availability: %w", err)
 	}
 	return nil
 }
@@ -249,6 +249,59 @@ func (s *quakeSenseConfigMqttPasswordImpl) Get(handler *action.Handler) (any, er
 func (s *quakeSenseConfigMqttPasswordImpl) Restore(handler *action.Handler) error {
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
 		return fmt.Errorf("failed to reset MQTT password: %w", err)
+	}
+	return nil
+}
+
+type quakeSenseConfigMqttClientIdImpl struct{}
+
+func (s *quakeSenseConfigMqttClientIdImpl) GetName() string             { return "MQTT Client ID" }
+func (s *quakeSenseConfigMqttClientIdImpl) GetNamespace() string        { return ID }
+func (s *quakeSenseConfigMqttClientIdImpl) GetKey() string              { return "mqtt_client_id" }
+func (s *quakeSenseConfigMqttClientIdImpl) GetType() action.SettingType { return action.String }
+func (s *quakeSenseConfigMqttClientIdImpl) IsRequired() bool            { return true }
+func (s *quakeSenseConfigMqttClientIdImpl) GetVersion() int             { return 0 }
+func (s *quakeSenseConfigMqttClientIdImpl) GetOptions() map[string]any  { return nil }
+func (s *quakeSenseConfigMqttClientIdImpl) GetDefaultValue() any {
+	b := make([]byte, 4)
+	if _, err := crypto_rand.Read(b); err != nil {
+		return fmt.Sprintf("anyshake-observer-%x", uint32(time.Now().UnixNano()))
+	}
+	return fmt.Sprintf("anyshake-observer-%x", b)
+}
+func (s *quakeSenseConfigMqttClientIdImpl) GetDescription() string {
+	return "MQTT Client ID uniquely identifies a client when connecting to the broker. By default, it is anyshake-observer-<random string>."
+}
+func (s *quakeSenseConfigMqttClientIdImpl) Init(handler *action.Handler) error {
+	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
+		return fmt.Errorf("failed to set default MQTT client ID: %w", err)
+	}
+	return nil
+}
+func (s *quakeSenseConfigMqttClientIdImpl) Set(handler *action.Handler, newVal any) error {
+	topic, err := config.GetConfigValString(newVal)
+	if err != nil {
+		return err
+	}
+	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), topic); err != nil {
+		return fmt.Errorf("failed to set MQTT client ID: %w", err)
+	}
+	return nil
+}
+func (s *quakeSenseConfigMqttClientIdImpl) Get(handler *action.Handler) (any, error) {
+	val, _, _, err := handler.SettingsGet(s.GetNamespace(), s.GetKey())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get MQTT client ID: %w", err)
+	}
+	id, ok := val.(string)
+	if !ok {
+		return nil, errors.New("string expected")
+	}
+	return id, nil
+}
+func (s *quakeSenseConfigMqttClientIdImpl) Restore(handler *action.Handler) error {
+	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
+		return fmt.Errorf("failed to reset MQTT client ID: %w", err)
 	}
 	return nil
 }
@@ -471,10 +524,10 @@ func (s *quakeSenseConfigTriggerMethodImpl) GetType() action.SettingType { retur
 func (s *quakeSenseConfigTriggerMethodImpl) IsRequired() bool            { return true }
 func (s *quakeSenseConfigTriggerMethodImpl) GetOptions() map[string]any {
 	return map[string]any{
-		"Classic STA/LTA": CLASSIC_STA_LTA,
-		// "Recursive STA/LTA": RECURSIVE_STA_LTA,
-		// "Delayed STA/LTA":   DELAYED_STA_LTA,
-		"Z-Detect": Z_DETECT,
+		"Classic STA/LTA":   CLASSIC_STA_LTA,
+		"Recursive STA/LTA": RECURSIVE_STA_LTA,
+		"Delayed STA/LTA":   DELAYED_STA_LTA,
+		"Z-Detect":          Z_DETECT,
 	}
 }
 func (s *quakeSenseConfigTriggerMethodImpl) GetVersion() int      { return 0 }
@@ -787,6 +840,7 @@ func (s *QuakeSenseServiceImpl) GetConfigConstraint() []config.IConstraint {
 		&quakeSenseConfigMqttTopicImpl{},
 		&quakeSenseConfigMqttUsernameImpl{},
 		&quakeSenseConfigMqttPasswordImpl{},
+		&quakeSenseConfigMqttClientIdImpl{},
 		&quakeSenseConfigMonitorChannelImpl{},
 		&quakeSenseConfigFilterTypeImpl{},
 		&quakeSenseConfigMinFreqImpl{},

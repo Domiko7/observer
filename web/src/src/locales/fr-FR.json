@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Ecouter le murmure de la terre."
+        },
+        "router": {
+            "home": "Etat de la station",
+            "realtime": "Ondes en direct",
+            "history": "Historique des ondes",
+            "download": "Téléchargement des données",
+            "settings": "Paramètres du système",
+            "default": "Page introuvable"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Oups ! Quelque chose s'est mal passé.",
@@ -8,7 +22,23 @@
             "yes": "Oui",
             "no": "Non",
             "add_new_item": "Saisir un nouvel élément.",
-            "editing_list": "Modification de la liste de {{fieldName}}"
+            "editing_list": "Modification de la liste de {{fieldName}}",
+            "table_value": "Valeur",
+            "table_actions": "Actions"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Paramètres du spectrogramme",
+                "min_db": "dB min",
+                "max_db": "dB max"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Paramètres du spectrogramme",
+                "min_db": "dB min",
+                "max_db": "dB max"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Sélectionner un événement sismique",
                 "earthquake_at": "Séisme à {{time}}",
-                "p_wave_arrival": "Arrivée Onde P {{time}} secondes",
-                "s_wave_arrival": "Arrivée Onde S {{time}} secondes",
+                "p_wave_arrival": "Arrivée Onde P {{time}} ({{seconds}} sec)",
+                "s_wave_arrival": "Arrivée Onde S {{time}} ({{seconds}} sec)",
                 "epicenter_distance": "Épicentre {{distance}} km",
                 "earthquake_depth": "Profondeur {{depth}} km",
                 "selected_an_event": "Un événement sismique sélectionné dans {{region}} à {{time}}."
@@ -92,6 +122,10 @@
                 "confirm_title": "Confirmer la réinitialisation",
                 "confirm_button": "Réinitialiser",
                 "cancel_button": "Annuler"
+            },
+            "display_mode": {
+                "waveform_mode": "Mode forme d’onde",
+                "spectrogram_mode": "Mode spectrogramme"
             },
             "share_link": {
                 "share_button": "Partager le lien",
@@ -138,6 +172,11 @@
                 "success": "Connecté à la station, serveur actif depuis {{uptime}} secondes, mis à jour à {{updatedAt}}.",
                 "error": "Erreur lors de la connexion à la station, veuillez vérifier votre connexion."
             },
+            "upgrade": {
+                "update_available": "Une nouvelle version {{latest}} est disponible. Vous pouvez activer les mises à jour automatiques ou télécharger et installer la mise à jour manuellement.",
+                "restart_needed": "La dernière version {{latest}} a été installée, mais {{current}} est toujours en cours d’exécution. Veuillez redémarrer le logiciel à un moment approprié pour appliquer la mise à jour.",
+                "manual_upgrade_needed": "Une nouvelle version {{latest}} a été détectée, mais la version actuelle {{current}} est inférieure à la version minimale compatible {{required}}. Une mise à niveau manuelle est requise."
+            },
             "station_location": {
                 "title": "Emplacement de la station"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Retour"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Mode forme d’onde",
+                "spectrogram_mode": "Mode spectrogramme"
+            },
             "reset_layout": {
                 "reset_button": "Tout réinitialiser",
                 "confirm_message": "Êtes-vous sûr de vouloir réinitialiser la disposition ?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Verrouiller la disposition",
                 "unlock_button": "Déverrouiller la disposition"
+            },
+            "record_data": {
+                "start_button": "Démarrer l'enregistrement",
+                "stop_button": "Arrêter l'enregistrement",
+                "start_recording": "L'enregistrement a commencé à {{startedAt}}.",
+                "link_created": "Enregistrement arrêté à {{endedAt}} ({{duration}} secondes). Un lien a été généré.",
+                "no_data_recorded": "Aucune donnée n'a été enregistrée pendant cette période."
             },
             "connectivity": {
                 "connecting": "Pas de connexion, connexion en cours...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Zone dangereuse",
+                "restart_application": {
+                    "title": "Redémarrer toute l’application",
+                    "description": "Cela redémarrera l’ensemble de l’application. L’opération peut prendre un court instant et fermera temporairement toutes les connexions actives, interrompant les services et les enregistrements.",
+                    "submit_button": "Redémarrer l’application",
+                    "confirm_title": "Confirmer le redémarrage",
+                    "confirm_message": "Êtes-vous sûr de vouloir redémarrer l’application ?",
+                    "confirm_button": "Redémarrer",
+                    "cancel_button": "Annuler",
+                    "restarting": "Envoi de la demande de redémarrage...",
+                    "success": "Demande de redémarrage envoyée. L’application redémarrera dans quelques secondes.",
+                    "error": "Échec de la demande de redémarrage de l’application : {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Purger les enregistrements de forme d'onde",
                     "description": "Ceci supprimera tous les enregistrements de forme d'onde de la base de données, l'opération est irréversible.",
@@ -246,6 +308,32 @@
                     "resetting": "Réinitialisation de la configuration du service en cours...",
                     "success": "Configuration du service réinitialisée avec succès.",
                     "error": "Échec de la réinitialisation de la configuration du service : {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "En cours",
+                    "invalid_range": "Veuillez sélectionner une date de début et de fin valides.",
+                    "started": "La tâche de purge a commencé.",
+                    "request_failed": "Échec du démarrage de la tâche de purge : {{error}}",
+                    "running_hint": "Une autre opération de purge ne peut pas être démarrée tant que l’opération actuelle n’est pas terminée.",
+                    "status_query_failed": "Échec de la récupération de l’état de la purge : {{error}}",
+                    "status_idle": "Aucune tâche de purge n’est actuellement en cours.",
+                    "status_running": "Purge en cours : {{kind}}.",
+                    "status_success": "Purge terminée : {{kind}}.",
+                    "status_failed": "Purge échouée : {{kind}} : {{error}}",
+                    "verification_label": "Texte de vérification",
+                    "verification_help": "Veuillez saisir \"{{verificationText}}\" pour activer le bouton d’exécution.",
+                    "kind_seis_records_full": "Enregistrements de forme d’onde",
+                    "kind_seis_records_by_date": "Enregistrements de forme d’onde dans la plage de dates spécifiée",
+                    "kind_miniseed_full": "Fichiers MiniSEED",
+                    "kind_miniseed_by_date": "Fichiers MiniSEED dans la plage de dates spécifiée",
+                    "kind_helicorder_full": "Fichiers Helicorder",
+                    "kind_helicorder_by_date": "Fichiers Helicorder dans la plage de dates spécifiée",
+                    "kind_unknown": "Tâche de purge",
+                    "start_date": "Date de début",
+                    "end_date": "Date de fin",
+                    "mode_label": "Mode de purge",
+                    "mode_all": "Tout",
+                    "mode_range": "Plage de dates"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "Agent Utilisateur",
                     "updated_at": "Mis à jour le",
                     "actions": "Actions"
+                }
+            },
+            "Backup": {
+                "title": "Gestion des sauvegardes",
+                "select_mode": {
+                    "backup": "Créer une sauvegarde",
+                    "restore": "Restaurer une sauvegarde"
+                },
+                "backup_config": {
+                    "title": "Créer une sauvegarde",
+                    "description": "Cela exportera vos données de configuration sous forme de fichier JSON. Vous pouvez enregistrer ce fichier et l'utiliser plus tard pour restaurer votre configuration, par exemple lors d'une migration.",
+                    "submit_button": "Générer la sauvegarde",
+                    "generating": "Génération des données de sauvegarde...",
+                    "success": "Les données de sauvegarde ont été générées avec succès.",
+                    "error": "Échec de la génération des données de sauvegarde : {{error}}"
+                },
+                "restore_config": {
+                    "title": "Sélectionner un fichier de sauvegarde",
+                    "description": "Choisissez un fichier de sauvegarde JSON pour restaurer votre configuration. AnyShake Observer remplacera vos paramètres actuels par ceux du fichier sélectionné.",
+                    "submit_button": "Restaurer la configuration",
+                    "no_file_selected": "Aucun fichier sélectionné.",
+                    "confirm_title": "Confirmer la restauration",
+                    "confirm_message": "Êtes-vous sûr de vouloir restaurer la configuration ? Cette action remplacera vos paramètres actuels.",
+                    "confirm_button": "Restaurer",
+                    "cancel_button": "Annuler",
+                    "restoring": "Restauration de la configuration...",
+                    "success": "La configuration a été restaurée avec succès.",
+                    "error": "Échec de la restauration de la configuration : {{error}}"
                 }
             }
         }

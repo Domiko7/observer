@@ -6,8 +6,14 @@ import (
 
 func (g *Source) Now() time.Time {
 	g.mu.RLock()
-	defer g.mu.RUnlock()
+	tm := g.timeFunc()
+	local := g.localTime
+	ref := g.refTime
+	ppm := g.driftPPM
+	g.mu.RUnlock()
 
-	elapsed := time.Since(g.localTime)
-	return g.refTime.Add(elapsed).UTC()
+	elapsed := tm.Sub(local)
+	drift := time.Duration(elapsed.Seconds() * ppm * 1e-6 * float64(time.Second))
+
+	return ref.Add(elapsed + drift).UTC()
 }

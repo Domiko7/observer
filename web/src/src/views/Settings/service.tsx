@@ -12,10 +12,11 @@ import Icon from '@mdi/react';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { DialogModal } from '../../components/DialogModal';
-import { ErrorPage } from '../../components/ErrorPage';
-import { StatusCard } from '../../components/StatusCard';
-import { InputType, TypedInput } from '../../components/TypedInput';
+import { DialogModal } from '../../components/ui/DialogModal';
+import { ErrorPage } from '../../components/ui/ErrorPage';
+import { InputType, TypedInput } from '../../components/ui/TypedInput';
+import { StatusCard } from '../../components/widget/StatusCard';
+import { SettingsConstraints } from '../../config/constraints';
 import {
     useGetServiceDataQuery,
     useRestartServiceMutation,
@@ -36,7 +37,7 @@ export const Service = () => {
         refetch: getServiceDataRefetch,
         error: getServiceDataError,
         loading: getServiceDataLoading
-    } = useGetServiceDataQuery({ pollInterval: 5000 });
+    } = useGetServiceDataQuery({ pollInterval: SettingsConstraints.pollInterval });
 
     const [serviceConfig, setServiceConfig] = useState<
         Record<

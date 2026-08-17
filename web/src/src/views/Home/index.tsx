@@ -13,19 +13,21 @@ import Icon from '@mdi/react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { Connectivity } from '../../components/Connectivity';
-import { GaugeChart } from '../../components/GaugeChart';
-import { LineChart } from '../../components/LineChart';
-import { MapContainer } from '../../components/MapContainer';
-import { Skeleton } from '../../components/Skeleton';
-import { StatusCard } from '../../components/StatusCard';
-import { StatusList } from '../../components/StatusList';
-import { useGetHomeDataQuery } from '../../graphql';
+import { GaugeChart } from '../../components/chart/GaugeChart';
+import { LineChart } from '../../components/chart/LineChart';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { Banner } from '../../components/widget/Banner';
+import { MapContainer } from '../../components/widget/MapContainer';
+import { StatusCard } from '../../components/widget/StatusCard';
+import { StatusList } from '../../components/widget/StatusList';
+import { HomeConstraints } from '../../config/constraints';
+import { useGetHomeDataQuery, useGetUpgradeStatusLazyQuery } from '../../graphql';
 import { getTimeString } from '../../helpers/utils/getTimeString';
+import { useCredentialStore } from '../../stores/credential';
 
 const Home = () => {
     const { t } = useTranslation();
-
+    const { getCredential } = useCredentialStore();
     const lineChartConfig = useMemo(
         () => ({
             height: 250,
@@ -38,15 +40,12 @@ const Home = () => {
         }),
         []
     );
-    const lineChartRetention = 100;
-    const pollInterval = 2000;
-    const maxGapSeconds = 5 * (pollInterval / 1000);
+
     const {
         data: getHomeDataData,
         error: getHomeDataError,
         loading: getHomeDataLoading
-    } = useGetHomeDataQuery({ pollInterval });
-
+    } = useGetHomeDataQuery({ pollInterval: HomeConstraints.pollInterval });
     const getStationCoordinates = useMemo(
         () =>
             getHomeDataData
@@ -189,8 +188,8 @@ const Home = () => {
         [getHomeDataData?.getServiceStatus]
     );
 
-    const [cpuData, setCpuData] = useState<Array<[number, number | null]>>([]);
     const [memoryData, setMemoryData] = useState<Array<[number, number | null]>>([]);
+    const [cpuData, setCpuData] = useState<Array<[number, number | null]>>([]);
     const memoryDataRef = useRef(memoryData);
     const cpuDataRef = useRef(cpuData);
     const processChartData = useCallback(
@@ -223,8 +222,8 @@ const Home = () => {
             const newCpuData = processChartData(
                 cpuDataRef.current,
                 [getHomeDataData.getCurrentTime, getHomeDataData.getSystemStatus.cpu ?? 0],
-                lineChartRetention,
-                maxGapSeconds
+                HomeConstraints.lineChartRetention,
+                HomeConstraints.maxGapSeconds
             );
             cpuDataRef.current = newCpuData;
             setCpuData(newCpuData);
@@ -232,31 +231,75 @@ const Home = () => {
             const newMemoryData = processChartData(
                 memoryDataRef.current,
                 [getHomeDataData.getCurrentTime, getHomeDataData.getSystemStatus.memory ?? 0],
-                lineChartRetention,
-                maxGapSeconds
+                HomeConstraints.lineChartRetention,
+                HomeConstraints.maxGapSeconds
             );
             memoryDataRef.current = newMemoryData;
             setMemoryData(newMemoryData);
         }
-    }, [getHomeDataData, maxGapSeconds, processChartData]);
+    }, [getHomeDataData, processChartData]);
+
+    const [getUpgradeStatus] = useGetUpgradeStatusLazyQuery();
+    const [upgradeMessage, setUpgradeMessage] = useState('');
+
+    const generateUpgradeMessage = useCallback(
+        (
+            current: string,
+            latest: string,
+            required: string,
+            eligible: boolean,
+            applied: boolean
+        ) => {
+            if (eligible) {
+                return t('views.Home.upgrade.update_available', { latest });
+            }
+            if (applied) {
+                return t('views.Home.upgrade.restart_needed', { latest, current });
+            }
+            if (current !== latest) {
+                return t('views.Home.upgrade.manual_upgrade_needed', { latest, current, required });
+            }
+
+            return '';
+        },
+        [t]
+    );
+
+    useEffect(() => {
+        if (getHomeDataData?.getCurrentUser.admin) {
+            getUpgradeStatus().then(({ data }) => {
+                let msg = '';
+                if (data?.getUpgradeStatus) {
+                    const { current, latest, required, eligible, applied } = data.getUpgradeStatus;
+                    msg = generateUpgradeMessage(current, latest, required, eligible, applied);
+                }
+                setUpgradeMessage(msg);
+            });
+        }
+    }, [generateUpgradeMessage, getHomeDataData?.getCurrentUser.admin, getUpgradeStatus, t]);
 
     return (
         <div className="container mx-auto space-y-6 p-4">
-            <Connectivity
-                status={getHomeDataLoading ? 'warning' : getHomeDataError ? 'error' : 'ok'}
-                message={
-                    getHomeDataLoading
-                        ? t('views.Home.connectivity.loading')
-                        : getHomeDataError
-                          ? t('views.Home.connectivity.error')
-                          : t('views.Home.connectivity.success', {
-                                uptime: (getHomeDataData!.getSystemStatus.uptime / 1000).toFixed(1),
-                                updatedAt: getHomeDataData
-                                    ? getTimeString(getHomeDataData.getCurrentTime)
-                                    : 'N/A'
-                            })
-                }
-            />
+            <div className="space-y-3">
+                {upgradeMessage.length > 0 && <Banner status="warning" message={upgradeMessage} />}
+                <Banner
+                    status={getHomeDataLoading ? 'warning' : getHomeDataError ? 'error' : 'ok'}
+                    message={
+                        getHomeDataLoading
+                            ? t('views.Home.connectivity.loading')
+                            : getHomeDataError
+                              ? t('views.Home.connectivity.error')
+                              : t('views.Home.connectivity.success', {
+                                    uptime: (
+                                        getHomeDataData!.getSystemStatus.uptime / 1000
+                                    ).toFixed(1),
+                                    updatedAt: getHomeDataData
+                                        ? getTimeString(getHomeDataData.getCurrentTime)
+                                        : 'N/A'
+                                })
+                    }
+                />
+            </div>
 
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
                 <StatusCard
@@ -291,11 +334,13 @@ const Home = () => {
                         scrollWheelZoom
                         zoomControl
                         dragging
-                        zoom={6}
-                        maxZoom={7}
-                        minZoom={3}
                         height={300}
-                        tile="/tiles/{z}/{x}/{y}.webp"
+                        zoom={HomeConstraints.mapDefaultZoom}
+                        maxZoom={HomeConstraints.mapMaxZoom}
+                        minZoom={HomeConstraints.mapMinZoom}
+                        tileUrl={HomeConstraints.mapTileUrl}
+                        tileToken={getCredential().token}
+                        layers={HomeConstraints.mapTileLayers}
                         coordinates={getStationCoordinates}
                     />
                 </div>

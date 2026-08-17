@@ -2,6 +2,13 @@
 
 package graph_model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
 type Mutation struct {
 }
 
@@ -47,6 +54,15 @@ type DeviceStatus struct {
 	Frames    int64 `json:"frames"`
 	Errors    int64 `json:"errors"`
 	Messages  int64 `json:"messages"`
+}
+
+type PurgeDataJob struct {
+	ID         string    `json:"id"`
+	Kind       string    `json:"kind"`
+	Status     JobStatus `json:"status"`
+	StartedAt  *int64    `json:"startedAt,omitempty"`
+	FinishedAt *int64    `json:"finishedAt,omitempty"`
+	Error      *string   `json:"error,omitempty"`
 }
 
 type SeisEvent struct {
@@ -116,4 +132,71 @@ type SystemStatus struct {
 	Memory float64 `json:"memory"`
 	Disk   float64 `json:"disk"`
 	Uptime int64   `json:"uptime"`
+}
+
+type UpgradeStatus struct {
+	Required string `json:"required"`
+	Current  string `json:"current"`
+	Latest   string `json:"latest"`
+	Eligible bool   `json:"eligible"`
+	Applied  bool   `json:"applied"`
+}
+
+type JobStatus string
+
+const (
+	JobStatusIdle      JobStatus = "IDLE"
+	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusSucceeded JobStatus = "SUCCEEDED"
+	JobStatusFailed    JobStatus = "FAILED"
+)
+
+var AllJobStatus = []JobStatus{
+	JobStatusIdle,
+	JobStatusRunning,
+	JobStatusSucceeded,
+	JobStatusFailed,
+}
+
+func (e JobStatus) IsValid() bool {
+	switch e {
+	case JobStatusIdle, JobStatusRunning, JobStatusSucceeded, JobStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e JobStatus) String() string {
+	return string(e)
+}
+
+func (e *JobStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = JobStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid jobStatus", str)
+	}
+	return nil
+}
+
+func (e JobStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *JobStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e JobStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

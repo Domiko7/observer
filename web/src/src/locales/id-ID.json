@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Dengarkan bisikan bumi."
+        },
+        "router": {
+            "home": "Status Stasiun",
+            "realtime": "Gelombang Waktu Nyata",
+            "history": "Gelombang Sejarah",
+            "download": "Unduh Data",
+            "settings": "Pengaturan Sistem",
+            "default": "Halaman Tidak Ditemukan"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Ups! Terjadi kesalahan.",
@@ -8,7 +22,23 @@
             "yes": "Ya",
             "no": "Tidak",
             "add_new_item": "Masukkan item baru.",
-            "editing_list": "Mengedit Daftar {{fieldName}}"
+            "editing_list": "Mengedit Daftar {{fieldName}}",
+            "table_value": "Nilai",
+            "table_actions": "Tindakan"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Pengaturan Spektrogram",
+                "min_db": "dB Minimum",
+                "max_db": "dB Maksimum"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Pengaturan Spektrogram",
+                "min_db": "dB Minimum",
+                "max_db": "dB Maksimum"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Pilih Kejadian Seismik",
                 "earthquake_at": "Gempa bumi pada {{time}}",
-                "p_wave_arrival": "Kedatangan Gelombang P {{time}} detik",
-                "s_wave_arrival": "Kedatangan Gelombang S {{time}} detik",
+                "p_wave_arrival": "Kedatangan Gelombang P {{time}} ({{seconds}} detik)",
+                "s_wave_arrival": "Kedatangan Gelombang S {{time}} ({{seconds}} detik)",
                 "epicenter_distance": "Episentrum {{distance}} km",
                 "earthquake_depth": "Kedalaman {{depth}} km",
                 "selected_an_event": "Memilih kejadian gempa bumi di {{region}} pada {{time}}."
@@ -92,6 +122,10 @@
                 "confirm_title": "Konfirmasi Reset",
                 "confirm_button": "Reset",
                 "cancel_button": "Batal"
+            },
+            "display_mode": {
+                "waveform_mode": "Mode Gelombang",
+                "spectrogram_mode": "Mode Spektrogram"
             },
             "share_link": {
                 "share_button": "Bagikan Tautan",
@@ -138,6 +172,11 @@
                 "success": "Terhubung ke stasiun, server aktif selama {{uptime}} detik, diperbarui pada {{updatedAt}}.",
                 "error": "Terjadi error saat menghubungkan ke stasiun, silakan periksa koneksi Anda."
             },
+            "upgrade": {
+                "update_available": "Versi baru {{latest}} tersedia. Anda dapat mengaktifkan pembaruan otomatis atau mengunduh dan memasangnya secara manual.",
+                "restart_needed": "Versi terbaru {{latest}} telah dipasang, namun {{current}} masih berjalan. Silakan mulai ulang perangkat lunak pada waktu yang sesuai untuk menerapkan pembaruan.",
+                "manual_upgrade_needed": "Versi baru {{latest}} terdeteksi, tetapi versi saat ini {{current}} berada di bawah versi minimum yang kompatibel {{required}}. Pembaruan manual diperlukan."
+            },
             "station_location": {
                 "title": "Lokasi Stasiun"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Kembali"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Mode Gelombang",
+                "spectrogram_mode": "Mode Spektrogram"
+            },
             "reset_layout": {
                 "reset_button": "Reset Semua",
                 "confirm_message": "Apakah Anda yakin ingin mereset tata letak?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Kunci Tata Letak",
                 "unlock_button": "Buka Kunci Tata Letak"
+            },
+            "record_data": {
+                "start_button": "Mulai Merekam",
+                "stop_button": "Berhenti Merekam",
+                "start_recording": "Perekaman dimulai pada {{startedAt}}.",
+                "link_created": "Perekaman dihentikan pada {{endedAt}} ({{duration}} detik). Sebuah tautan telah dibuat.",
+                "no_data_recorded": "Tidak ada data yang direkam selama periode ini."
             },
             "connectivity": {
                 "connecting": "Tidak ada koneksi, sedang menghubungkan...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Zona Berbahaya",
+                "restart_application": {
+                    "title": "Mulai Ulang Seluruh Aplikasi",
+                    "description": "Tindakan ini akan memulai ulang seluruh aplikasi. Proses ini mungkin memerlukan waktu singkat dan akan menutup sementara semua koneksi aktif, sehingga layanan dan perekaman akan terhenti.",
+                    "submit_button": "Mulai Ulang Aplikasi",
+                    "confirm_title": "Konfirmasi Mulai Ulang",
+                    "confirm_message": "Apakah Anda yakin ingin memulai ulang aplikasi?",
+                    "confirm_button": "Mulai Ulang",
+                    "cancel_button": "Batal",
+                    "restarting": "Mengirim permintaan mulai ulang aplikasi...",
+                    "success": "Permintaan mulai ulang telah dikirim. Aplikasi akan dimulai ulang dalam beberapa detik.",
+                    "error": "Gagal meminta mulai ulang aplikasi: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Hapus Rekaman Waveform",
                     "description": "Ini akan menghapus semua rekaman waveform di database, operasi ini tidak dapat dibatalkan.",
@@ -246,6 +308,32 @@
                     "resetting": "Mereset konfigurasi layanan...",
                     "success": "Berhasil mereset konfigurasi layanan.",
                     "error": "Gagal mereset konfigurasi layanan: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Berjalan",
+                    "invalid_range": "Silakan pilih tanggal mulai dan tanggal akhir yang valid.",
+                    "started": "Tugas pembersihan telah dimulai.",
+                    "request_failed": "Gagal memulai tugas pembersihan: {{error}}",
+                    "running_hint": "Operasi pembersihan lain tidak dapat dimulai sampai operasi saat ini selesai.",
+                    "status_query_failed": "Gagal mengambil status pembersihan: {{error}}",
+                    "status_idle": "Saat ini tidak ada tugas pembersihan yang berjalan.",
+                    "status_running": "Membersihkan: {{kind}}.",
+                    "status_success": "Pembersihan selesai: {{kind}}.",
+                    "status_failed": "Pembersihan gagal: {{kind}}: {{error}}",
+                    "verification_label": "Teks verifikasi",
+                    "verification_help": "Silakan masukkan \"{{verificationText}}\" untuk mengaktifkan tombol jalankan.",
+                    "kind_seis_records_full": "Rekaman waveform",
+                    "kind_seis_records_by_date": "Rekaman waveform dalam rentang tanggal yang ditentukan",
+                    "kind_miniseed_full": "File MiniSEED",
+                    "kind_miniseed_by_date": "File MiniSEED dalam rentang tanggal yang ditentukan",
+                    "kind_helicorder_full": "File Helicorder",
+                    "kind_helicorder_by_date": "File Helicorder dalam rentang tanggal yang ditentukan",
+                    "kind_unknown": "Tugas pembersihan",
+                    "start_date": "Tanggal mulai",
+                    "end_date": "Tanggal akhir",
+                    "mode_label": "Mode pembersihan",
+                    "mode_all": "Semua",
+                    "mode_range": "Rentang tanggal"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "User Agent",
                     "updated_at": "Diperbarui Pada",
                     "actions": "Aksi"
+                }
+            },
+            "Backup": {
+                "title": "Manajemen Cadangan",
+                "select_mode": {
+                    "backup": "Buat Cadangan",
+                    "restore": "Pulihkan Cadangan"
+                },
+                "backup_config": {
+                    "title": "Buat Cadangan",
+                    "description": "Ini akan mengekspor data konfigurasi Anda sebagai file JSON. Anda dapat menyimpan file ini dan menggunakannya nanti untuk memulihkan pengaturan Anda, misalnya saat migrasi.",
+                    "submit_button": "Hasilkan Cadangan",
+                    "generating": "Sedang membuat data cadangan...",
+                    "success": "Data cadangan berhasil dibuat.",
+                    "error": "Gagal membuat data cadangan: {{error}}"
+                },
+                "restore_config": {
+                    "title": "Pilih File Cadangan",
+                    "description": "Pilih file cadangan JSON untuk memulihkan konfigurasi Anda. AnyShake Observer akan menimpa pengaturan Anda saat ini dengan data dari file tersebut.",
+                    "submit_button": "Pulihkan Konfigurasi",
+                    "no_file_selected": "Tidak ada file yang dipilih.",
+                    "confirm_title": "Konfirmasi Pemulihan",
+                    "confirm_message": "Apakah Anda yakin ingin memulihkan konfigurasi? Ini akan menimpa pengaturan Anda saat ini.",
+                    "confirm_button": "Pulihkan",
+                    "cancel_button": "Batal",
+                    "restoring": "Sedang memulihkan konfigurasi...",
+                    "success": "Konfigurasi berhasil dipulihkan.",
+                    "error": "Gagal memulihkan konfigurasi: {{error}}"
                 }
             }
         }

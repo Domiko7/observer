@@ -27,7 +27,7 @@ func (s *frpClientConfigEnabledImpl) GetDescription() string {
 }
 func (s *frpClientConfigEnabledImpl) Init(handler *action.Handler) error {
 	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to set default FRP client service availablity: %w", err)
+		return fmt.Errorf("failed to set default FRP client service availability: %w", err)
 	}
 	return nil
 }
@@ -37,14 +37,14 @@ func (s *frpClientConfigEnabledImpl) Set(handler *action.Handler, newVal any) er
 		return err
 	}
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), enabled); err != nil {
-		return fmt.Errorf("failed to set FRP client service availablity: %w", err)
+		return fmt.Errorf("failed to set FRP client service availability: %w", err)
 	}
 	return nil
 }
 func (s *frpClientConfigEnabledImpl) Get(handler *action.Handler) (any, error) {
 	val, _, _, err := handler.SettingsGet(s.GetNamespace(), s.GetKey())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get FRP client service availablity: %w", err)
+		return nil, fmt.Errorf("failed to get FRP client service availability: %w", err)
 	}
 	enabled, ok := val.(bool)
 	if !ok {
@@ -54,7 +54,7 @@ func (s *frpClientConfigEnabledImpl) Get(handler *action.Handler) (any, error) {
 }
 func (s *frpClientConfigEnabledImpl) Restore(handler *action.Handler) error {
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to reset FRP client service availablity: %w", err)
+		return fmt.Errorf("failed to reset FRP client service availability: %w", err)
 	}
 	return nil
 }
@@ -66,9 +66,9 @@ func (s *frpClientConfigServerAddrImpl) GetNamespace() string        { return ID
 func (s *frpClientConfigServerAddrImpl) GetKey() string              { return "server_addr" }
 func (s *frpClientConfigServerAddrImpl) GetType() action.SettingType { return action.String }
 func (s *frpClientConfigServerAddrImpl) IsRequired() bool            { return true }
-func (s *frpClientConfigServerAddrImpl) GetVersion() int             { return 0 }
+func (s *frpClientConfigServerAddrImpl) GetVersion() int             { return 1 }
 func (s *frpClientConfigServerAddrImpl) GetOptions() map[string]any  { return nil }
-func (s *frpClientConfigServerAddrImpl) GetDefaultValue() any        { return "anyshake.ip-ddns.com" }
+func (s *frpClientConfigServerAddrImpl) GetDefaultValue() any        { return "anyshake.observer" }
 func (s *frpClientConfigServerAddrImpl) GetDescription() string {
 	return "The address of the FRP server to connect to."
 }
@@ -76,6 +76,15 @@ func (s *frpClientConfigServerAddrImpl) Init(handler *action.Handler) error {
 	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
 		return fmt.Errorf("failed to set default FRP client server address: %w", err)
 	}
+
+	if currentVal, _, ver, err := handler.SettingsGet(s.GetNamespace(), s.GetKey());
+	// migrate to new domain
+	err == nil && ver == 0 && currentVal == "anyshake.ip-ddns.com" {
+		if err = s.Set(handler, s.GetDefaultValue()); err != nil {
+			return fmt.Errorf("failed to migrate server address: %w", err)
+		}
+	}
+
 	return nil
 }
 func (s *frpClientConfigServerAddrImpl) Set(handler *action.Handler, newVal any) error {

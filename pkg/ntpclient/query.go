@@ -14,11 +14,9 @@ import (
 )
 
 func (c *Client) Query() (time.Duration, string, error) {
-	probes := c.parallelProbe(c.pool)
+	probes := Probe(c.pool, c.readTimeout, c.timeFunc)
 
-	filtered := lo.Filter(probes, func(p probeResult, _ int) bool {
-		return p.err == nil && p.resp != nil
-	})
+	filtered := lo.Filter(probes, func(p ProbeResult, _ int) bool { return p.Err == nil && p.Resp != nil })
 	if len(filtered) == 0 {
 		return 0, "", errors.New("no available servers in NTP pool")
 	}
@@ -30,8 +28,8 @@ func (c *Client) Query() (time.Duration, string, error) {
 	}
 	var candidates []scoredServer
 	for _, p := range filtered {
-		rd := p.resp.RootDelay/2 + p.resp.RootDispersion + p.resp.RTT/2
-		candidates = append(candidates, scoredServer{p.server, rd, p.resp.RTT})
+		rd := p.Resp.RootDelay/2 + p.Resp.RootDispersion + p.Resp.RTT/2
+		candidates = append(candidates, scoredServer{p.Server, rd, p.Resp.RTT})
 	}
 
 	bestCandidate := lo.MinBy(candidates, func(a, b scoredServer) bool { return a.rootDistance < b.rootDistance })
@@ -58,7 +56,10 @@ func (c *Client) Query() (time.Duration, string, error) {
 
 			retryCount := 0
 			for {
-				resp, err := ntp.QueryWithOptions(bestServer, ntp.QueryOptions{Timeout: c.readTimeout})
+				resp, err := ntp.QueryWithOptions(bestServer, ntp.QueryOptions{
+					Timeout:       c.readTimeout,
+					GetSystemTime: c.timeFunc,
+				})
 				if err != nil || resp == nil {
 					retryCount++
 					if retryCount > c.retries {
@@ -147,7 +148,7 @@ func (c *Client) QueryAverage(attempts int) (time.Duration, error) {
 			return 0, err
 		}
 
-		logger.GetLogger("ntp_client").Infof("%d of %d attempts: current server %s, clock offset %d ms", i+1, attempts, server, resp.Milliseconds())
+		logger.GetLogger("ntp_client").Infof("%d of %d attempts: current server %s, monotonic clock offset %d ms", i+1, attempts, server, resp.Milliseconds())
 		results = append(results, resp.Milliseconds())
 
 		time.Sleep(time.Second)

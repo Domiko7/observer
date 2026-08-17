@@ -7,7 +7,11 @@ import {
     mdiShieldCheck
 } from '@mdi/js';
 import Icon from '@mdi/react';
-import { ErrorMessage, Field, Form, Formik } from 'formik';
+import { gcm } from '@noble/ciphers/aes.js';
+import { hkdf } from '@noble/hashes/hkdf.js';
+import { sha512 } from '@noble/hashes/sha2.js';
+import { Buffer } from 'buffer';
+import { Field, Form, Formik } from 'formik';
 import { md, pki, util } from 'node-forge';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +20,7 @@ import { globalConfig } from './config/global';
 import { localeConfig } from './config/locale';
 import { sendPromiseAlert } from './helpers/alert/sendPromiseAlert';
 import { getRestfulApiUrl } from './helpers/app/getRestfulApiUrl';
+import { solvePoWChallenge } from './helpers/app/solvePoWChallenge';
 import { ApiClient } from './helpers/request/ApiClient';
 import { useCredentialStore } from './stores/credential';
 
@@ -26,28 +31,39 @@ interface ILogin {
 }
 
 export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
+    const { t } = useTranslation();
     useEffect(() => {
-        document.title = globalConfig.name[currentLocale];
-    }, [currentLocale]);
+        document.title = t(globalConfig.name);
+    }, [currentLocale, t]);
 
     // State for pre-authentication data (captcha, encrypt key, etc.)
     const [preAuthTTL, setPreAuthTTL] = useState(0);
     const [preAuthData, setPreAuthData] = useState({
-        encrypt_key: '',
+        public_key: '',
         captcha_id: '',
+        challenge_id: '',
+        challenge_seed: '',
         captcha_img: '',
         error: false
     });
-    const { t } = useTranslation();
     const getPreAuthData = useCallback(
         async (notify: boolean) => {
-            setPreAuthData({ encrypt_key: '', captcha_id: '', captcha_img: '', error: false });
+            setPreAuthData({
+                public_key: '',
+                captcha_id: '',
+                challenge_id: '',
+                challenge_seed: '',
+                captcha_img: '',
+                error: false
+            });
             const requestFn = async (throwError: boolean) => {
                 const result = await ApiClient.request<{
                     ttl: number;
-                    encrypt_key: string;
+                    public_key: string;
                     captcha_id: string;
                     captcha_img: string;
+                    challenge_id: string;
+                    challenge_seed: string;
                 }>({
                     url: getRestfulApiUrl('/auth'),
                     method: 'post',
@@ -73,11 +89,14 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                     : await requestFn(false)
             )!;
             if (res?.data) {
-                const { ttl, encrypt_key, captcha_id, captcha_img } = res.data;
+                const { ttl, public_key, captcha_id, challenge_id, challenge_seed, captcha_img } =
+                    res.data;
                 setPreAuthData({
                     error: false,
-                    encrypt_key,
+                    public_key,
                     captcha_id,
+                    challenge_id,
+                    challenge_seed,
                     captcha_img: `data:image/png;base64,${captcha_img}`
                 });
                 setPreAuthTTL(ttl);
@@ -98,26 +117,55 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
 
     const { setCredential, credential } = useCredentialStore();
     const handleLoginSubmit = async (username: string, password: string, captcha: string) => {
-        // Load public key and encrypt credential
-        const publicKey = util.decode64(preAuthData.encrypt_key);
-        const credential = pki.publicKeyFromPem(publicKey).encrypt(
-            JSON.stringify({
-                username,
-                password,
-                timestamp: Date.now(),
-                captcha_solution: captcha,
-                captcha_id: preAuthData.captcha_id
-            }),
-            'RSA-OAEP'
+        const encrypt = async (secret: Uint8Array, data: Uint8Array, aad: Uint8Array) => {
+            const key = hkdf(sha512, secret, new Uint8Array([]), new Uint8Array([]), 32);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const cipher = gcm(key, iv, aad);
+            const ciphertext = cipher.encrypt(data);
+
+            const payload = new Uint8Array(iv.length + ciphertext.length);
+            payload.set(iv, 0);
+            payload.set(ciphertext, iv.length);
+
+            return Buffer.from(payload).toString('base64');
+        };
+
+        const publicKey = util.decode64(preAuthData.public_key);
+        const sessionId = md.sha512.create().update(publicKey).digest().toHex();
+        const sessionIdBuffer = Buffer.from(sessionId);
+
+        const secret = crypto.getRandomValues(new Uint8Array(32));
+        const encryptedSecret = util.encode64(
+            pki
+                .publicKeyFromPem(publicKey)
+                .encrypt(Buffer.from(secret).toString('base64'), 'RSA-OAEP')
         );
 
+        const encryptedNonce = await encrypt(
+            secret,
+            crypto.getRandomValues(new Uint8Array(16)),
+            sessionIdBuffer
+        );
+        const encryptedPayload = await encrypt(
+            secret,
+            Buffer.from(JSON.stringify({ username, password })),
+            sessionIdBuffer
+        );
+
+        const { nonce, hash } = await solvePoWChallenge(preAuthData.challenge_seed);
         const res = await ApiClient.request<{ token: string; life_time: number }>({
             url: getRestfulApiUrl('/auth'),
             method: 'post',
             data: {
                 action: 'login',
-                credential: util.encode64(credential),
-                nonce: md.sha1.create().update(publicKey).digest().toHex()
+                session: sessionId,
+                nonce: encryptedNonce,
+                secret: encryptedSecret,
+                payload: encryptedPayload,
+                captcha_val: captcha,
+                captcha_id: preAuthData.captcha_id,
+                challenge_id: preAuthData.challenge_id,
+                challenge_solution: `${nonce}:${hash}`
             }
         });
         if (res.error) {
@@ -130,7 +178,7 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
     };
 
     return (
-        <div className="animate-fade animate-duration-500 animate-delay-300 flex min-h-screen flex-col bg-gradient-to-br from-purple-500 to-blue-500 p-20 px-4">
+        <div className="animate-fade animate-duration-500 animate-delay-300 flex min-h-screen flex-col bg-gradient-to-br from-purple-300 via-purple-200 to-purple-300 p-20 px-4">
             <div className="m-auto w-full max-w-md rounded-lg bg-white p-12 shadow-xl md:max-w-xl">
                 <img
                     src={globalConfig.logo}
@@ -171,11 +219,6 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                                     />
                                     {t('Login.username.label')}
                                 </label>
-                                <ErrorMessage
-                                    className="text-sm text-red-500"
-                                    name="username"
-                                    component="div"
-                                />
                                 <Field
                                     required
                                     id="username"
@@ -194,11 +237,6 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                                     <Icon className="mr-2 flex-shrink-0" path={mdiKey} size={0.8} />
                                     {t('Login.password.label')}
                                 </label>
-                                <ErrorMessage
-                                    className="text-sm text-red-500"
-                                    name="password"
-                                    component="div"
-                                />
                                 <Field
                                     required
                                     id="password"
@@ -221,11 +259,6 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                                     />
                                     {t('Login.captcha.label')}
                                 </label>
-                                <ErrorMessage
-                                    className="text-sm text-red-500"
-                                    name="captcha"
-                                    component="div"
-                                />
                                 <div className="mt-1 flex items-center justify-between space-x-2">
                                     <Field
                                         required
@@ -246,7 +279,12 @@ export const Login = ({ currentLocale, locales, onSwitchLocale }: ILogin) => {
                                     <div
                                         className="flex w-24 cursor-pointer items-center justify-center rounded-md border border-gray-300 py-2 transition-all hover:border-gray-400 md:w-32"
                                         onClick={() => {
-                                            getPreAuthData(true);
+                                            if (
+                                                preAuthData.captcha_img.length ||
+                                                preAuthData.error
+                                            ) {
+                                                getPreAuthData(true);
+                                            }
                                         }}
                                     >
                                         {preAuthData.captcha_img.length ? (

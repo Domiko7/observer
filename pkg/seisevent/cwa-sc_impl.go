@@ -1,68 +1,27 @@
 package seisevent
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
-	"net/http"
 	"time"
 
-	"math/rand/v2"
+	"golang.org/x/sync/singleflight"
 
 	"github.com/anyshake/observer/pkg/cache"
 	"github.com/anyshake/observer/pkg/dnsquery"
 	"github.com/anyshake/observer/pkg/request"
+	"github.com/bclswl0827/travel"
 	"github.com/corpix/uarand"
-	"github.com/miekg/dns"
 )
 
 const CWA_SC_ID = "cwa_sc"
 
 type CWA_SC struct {
-	cache cache.AnyCache
-}
-
-// Magic function that bypasses the Great Firewall of China
-func (c *CWA_SC) createGfwBypasser(dnsList []string) *http.Transport {
-	return &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			hostname, port, err := net.SplitHostPort(addr)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse address: %w", err)
-			}
-
-			dnsResolver, err := dnsquery.New(dnsList[rand.IntN(len(dnsList))])
-			if err != nil {
-				return nil, fmt.Errorf("failed to create DNS resolver: %w", err)
-			}
-
-			if err := dnsResolver.Open(); err != nil {
-				return nil, fmt.Errorf("failed to open DNS resolver: %w", err)
-			}
-			defer dnsResolver.Close()
-
-			res, err := dnsResolver.Query((&dns.Msg{}).SetQuestion(fmt.Sprintf("%s.", hostname), dns.TypeA), 5*time.Second)
-			if err != nil {
-				return nil, fmt.Errorf("failed to query DNS: %w", err)
-			}
-			if len(res.Answer) == 0 {
-				return nil, errors.New("no answer from DNS")
-			}
-
-			dnsAnswer := res.Answer[rand.IntN(len(res.Answer))]
-			txtRecord, ok := dnsAnswer.(*dns.A)
-			if !ok {
-				return nil, fmt.Errorf("unexpected DNS answer type: %T", dnsAnswer)
-			}
-			if len(txtRecord.A) == 0 {
-				return nil, errors.New("no answer from DNS")
-			}
-
-			return (&net.Dialer{}).DialContext(ctx, network, fmt.Sprintf("%s:%s", txtRecord.A.String(), port))
-		},
-	}
+	resolvers       dnsquery.Resolvers
+	travelTimeTable *travel.AK135
+	cache           cache.GenericCache[[]Event]
+	sf              singleflight.Group
 }
 
 func (c *CWA_SC) getRequestBody(limit int) string {
@@ -73,91 +32,92 @@ func (c *CWA_SC) GetProperty() DataSourceProperty {
 	return DataSourceProperty{
 		ID:      CWA_SC_ID,
 		Country: "TW",
-		Deafult: "en-US",
+		Default: "en-US",
 		Locales: map[string]string{
 			"en-US": "Central Weather Administration Seismological Center",
 			"zh-TW": "交通部中央氣象署地震測報中心",
-			"zh-CN": "交通部中央气象署地震测报中心",
 		},
 	}
 }
 
 func (c *CWA_SC) GetEvents(latitude, longitude float64) ([]Event, error) {
-	// Get CWA HTML response
+	var baseEvents []Event
+
 	if c.cache.Valid() {
-		return c.cache.Get().([]Event), nil
-	}
+		baseEvents = c.cache.Get()
+	} else {
+		v, err, _ := c.sf.Do(CWA_SC_ID, func() (any, error) {
+			if c.cache.Valid() {
+				return c.cache.Get(), nil
+			}
 
-	res, err := request.POST(
-		"https://scweb.cwa.gov.tw/zh-tw/earthquake/ajaxhandler",
-		c.getRequestBody(100),
-		"application/x-www-form-urlencoded; charset=UTF-8",
-		10*time.Second, time.Second, 3, false,
-		// Query CWA IP from custom encrypted DNS servers
-		// Most overseas DoH / DoT providers are blocked in China
-		// Recommended DNSCrypt: https://raw.githubusercontent.com/DNSCrypt/dnscrypt-resolvers/master/v3/public-resolvers.md
-		c.createGfwBypasser([]string{
-			// cs-tokyo
-			"sdns://AQcAAAAAAAAADDE0Ni43MC4zMS40MyAxM3KtWVYywkFrhy8Jj4Ub3bllKExsvppPGQlkMNupWh4yLmRuc2NyeXB0LWNlcnQuY3J5cHRvc3Rvcm0uaXM",
-			// dnscry.pt-tokyo-ipv4
-			"sdns://AQcAAAAAAAAADDQ1LjY3Ljg2LjEyMyBDK5aRHZnKfdd6Q9ufEJY83WAQ9X5z7OAQa5CeptBCYBkyLmRuc2NyeXB0LWNlcnQuZG5zY3J5LnB0",
-			// dnscry.pt-tokyo02-ipv4
-			"sdns://AQcAAAAAAAAADDEwMy4xNzkuNDUuNiDfai5sp1im-BPHwbM1GCnTqn20FIbQfuvvybKsGf0pjhkyLmRuc2NyeXB0LWNlcnQuZG5zY3J5LnB0",
-			// jp.tiar.app
-			"sdns://AQcAAAAAAAAAEjE3Mi4xMDQuOTMuODA6MTQ0MyAyuHY-8b9lNqHeahPAzW9IoXnjiLaZpTeNbVs8TN9UUxsyLmRuc2NyeXB0LWNlcnQuanAudGlhci5hcHA",
-			// saldns01-conoha-ipv4
-			"sdns://gRQxNjMuNDQuMTI0LjIwNDo1MDQ0Mw",
-			// saldns02-conoha-ipv4
-			"sdns://gRUxNjAuMjUxLjIxNC4xNzI6NTA0NDM",
-			// saldns03-conoha-ipv4
-			"sdns://gRQxNjAuMjUxLjE2OC4yNTo1MDQ0Mw",
-			// dnscry.pt-seoul-ipv4
-			"sdns://AQcAAAAAAAAADTkyLjM4LjEzNS4xMjggyHfVGamJyxLfoAWjERmO4pY3KzKkqY-vSa2UnVx_gYAZMi5kbnNjcnlwdC1jZXJ0LmRuc2NyeS5wdA",
-		}),
-		map[string]string{"User-Agent": uarand.GetRandom()},
-	)
-	if err != nil {
-		return nil, err
-	}
+			res, err := request.POST(
+				"https://scweb.cwa.gov.tw/zh-tw/earthquake/ajaxhandler",
+				c.getRequestBody(100),
+				"application/x-www-form-urlencoded",
+				10*time.Second, time.Second, 3, false,
+				// Query CWA IP from custom encrypted DNS servers
+				createCustomTransport(c.resolvers, ""),
+				map[string]string{"User-Agent": uarand.GetRandom()},
+			)
+			if err != nil {
+				return nil, err
+			}
 
-	// Parse CWA JSON response
-	var dataMap map[string]any
-	err = json.Unmarshal(res, &dataMap)
-	if err != nil {
-		return nil, err
-	}
+			// Parse CWA JSON response
+			var dataMap map[string]any
+			if err := json.Unmarshal(res, &dataMap); err != nil {
+				return nil, err
+			}
 
-	dataMapEvents, ok := dataMap["data"].([]any)
-	if !ok {
-		return nil, errors.New("seismic event data is not available")
-	}
+			dataMapEvents, ok := dataMap["data"].([]any)
+			if !ok {
+				return nil, errors.New("seismic event data is not available")
+			}
 
-	var resultArr []Event
-	for _, event := range dataMapEvents {
-		eventData := event.([]any)
-		if len(eventData) < 10 {
-			continue
+			var resultArr []Event
+			for _, event := range dataMapEvents {
+				eventData := event.([]any)
+				if len(eventData) < 10 {
+					continue
+				}
+
+				resultArr = append(resultArr, Event{
+					Verfied:   true,
+					Depth:     string2Float(eventData[4].(string)),
+					Event:     eventData[0].(string),
+					Region:    eventData[5].(string),
+					Latitude:  string2Float(eventData[8].(string)),
+					Longitude: string2Float(eventData[7].(string)),
+					Magnitude: c.getMagnitude(eventData[3].(string)),
+					Timestamp: c.getTimestamp(eventData[2].(string)),
+				})
+			}
+
+			sorted := sortSeismicEvents(resultArr)
+			c.cache.Set(sorted)
+			return sorted, nil
+		})
+		if err != nil {
+			return nil, err
 		}
 
-		seisEvent := Event{
-			Verfied:   true,
-			Depth:     string2Float(eventData[4].(string)),
-			Event:     eventData[0].(string),
-			Region:    eventData[5].(string),
-			Latitude:  string2Float(eventData[8].(string)),
-			Longitude: string2Float(eventData[7].(string)),
-			Magnitude: c.getMagnitude(eventData[3].(string)),
-			Timestamp: c.getTimestamp(eventData[2].(string)),
-		}
-		seisEvent.Distance = getDistance(latitude, seisEvent.Latitude, longitude, seisEvent.Longitude)
-		seisEvent.Estimation = getSeismicEstimation(seisEvent.Depth, seisEvent.Distance)
-
-		resultArr = append(resultArr, seisEvent)
+		baseEvents = v.([]Event)
 	}
 
-	sortedEvents := sortSeismicEvents(resultArr)
-	c.cache.Set(sortedEvents)
-	return sortedEvents, nil
+	for i := range baseEvents {
+		baseEvents[i].Distance = getDistance(latitude, baseEvents[i].Latitude, longitude, baseEvents[i].Longitude)
+		baseEvents[i].Estimation = getSeismicEstimation(
+			c.travelTimeTable,
+			latitude,
+			baseEvents[i].Latitude,
+			longitude,
+			baseEvents[i].Longitude,
+			baseEvents[i].Depth,
+		)
+	}
+
+	return baseEvents, nil
 }
 
 func (c *CWA_SC) getTimestamp(textValue string) int64 {

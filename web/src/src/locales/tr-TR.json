@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Dünyanın fısıltısını dinleyin."
+        },
+        "router": {
+            "home": "Stationsstatus",
+            "realtime": "Echtzeit-Wellenform",
+            "history": "Geçmiş Dalga Formu",
+            "download": "Veri İndir",
+            "settings": "Sistem Ayarları",
+            "default": "Sayfa Bulunamadı"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Hoppa! Bir şeyler ters gitti.",
@@ -8,7 +22,23 @@
             "yes": "Evet",
             "no": "Hayır",
             "add_new_item": "Yeni öğe girin.",
-            "editing_list": "{{fieldName}} Listesi Düzenleniyor"
+            "editing_list": "{{fieldName}} Listesi Düzenleniyor",
+            "table_value": "Değer",
+            "table_actions": "İşlemler"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Spektrogram Ayarları",
+                "min_db": "Minimum dB",
+                "max_db": "Maksimum dB"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Spektrogram Ayarları",
+                "min_db": "Minimum dB",
+                "max_db": "Maksimum dB"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Bir Sismik Olay Seçin",
                 "earthquake_at": "{{time}} zamanında deprem",
-                "p_wave_arrival": "P-Dalgası Varışı {{time}} saniye",
-                "s_wave_arrival": "S-Dalgası Varışı {{time}} saniye",
+                "p_wave_arrival": "P-Dalgası Varışı {{time}} ({{seconds}} sn)",
+                "s_wave_arrival": "S-Dalgası Varışı {{time}} ({{seconds}} sn)",
                 "epicenter_distance": "Episantr {{distance}} km",
                 "earthquake_depth": "Derinlik {{depth}} km",
                 "selected_an_event": "{{region}} bölgesinde {{time}} zamanında bir deprem olayı seçildi."
@@ -92,6 +122,10 @@
                 "confirm_title": "Sıfırlamayı Onayla",
                 "confirm_button": "Sıfırla",
                 "cancel_button": "İptal"
+            },
+            "display_mode": {
+                "waveform_mode": "Dalga Formu Modu",
+                "spectrogram_mode": "Spektrogram Modu"
             },
             "share_link": {
                 "share_button": "Bağlantıyı Paylaş",
@@ -138,6 +172,11 @@
                 "success": "İstasyona bağlandı, sunucu {{uptime}} saniyedir aktif, {{updatedAt}} tarihinde güncellendi.",
                 "error": "İstasyona bağlanırken hata oluştu, lütfen bağlantınızı kontrol edin."
             },
+            "upgrade": {
+                "update_available": "Yeni bir sürüm {{latest}} kullanılabilir. Otomatik güncellemeleri etkinleştirebilir veya güncellemeyi manuel olarak indirip yükleyebilirsiniz.",
+                "restart_needed": "En son sürüm {{latest}} yüklendi, ancak şu anda {{current}} çalışıyor. Güncellemeyi uygulamak için uygun bir zamanda yazılımı yeniden başlatın.",
+                "manual_upgrade_needed": "Yeni bir sürüm {{latest}} algılandı, ancak mevcut sürüm {{current}}, minimum uyumlu sürüm {{required}}'ün altında. Manuel yükseltme gereklidir."
+            },
             "station_location": {
                 "title": "İstasyon Konumu"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Geri Git"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Dalga Formu Modu",
+                "spectrogram_mode": "Spektrogram Modu"
+            },
             "reset_layout": {
                 "reset_button": "Tümünü Sıfırla",
                 "confirm_message": "Düzeni sıfırlamak istediğinizden emin misiniz?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Düzeni Kilitle",
                 "unlock_button": "Düzen Kilidini Aç"
+            },
+            "record_data": {
+                "start_button": "Kaydı Başlat",
+                "stop_button": "Kaydı Durdur",
+                "start_recording": "Kayıt {{startedAt}} tarihinde başladı.",
+                "link_created": "Kayıt {{endedAt}} tarihinde durduruldu ({{duration}} saniye). Bir bağlantı oluşturuldu.",
+                "no_data_recorded": "Bu süre zarfında veri kaydedilmedi."
             },
             "connectivity": {
                 "connecting": "Bağlantı yok, şimdi bağlanılıyor...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Tehlikeli Bölge",
+                "restart_application": {
+                    "title": "Tüm Uygulamayı Yeniden Başlat",
+                    "description": "Bu işlem tüm uygulamayı yeniden başlatır. Kısa bir süre alabilir ve tüm etkin bağlantıları geçici olarak kapatarak hizmetlerde ve kayıtlarda kesintiye neden olur.",
+                    "submit_button": "Uygulamayı Yeniden Başlat",
+                    "confirm_title": "Yeniden Başlatmayı Onayla",
+                    "confirm_message": "Uygulamayı yeniden başlatmak istediğinizden emin misiniz?",
+                    "confirm_button": "Yeniden Başlat",
+                    "cancel_button": "İptal",
+                    "restarting": "Uygulama yeniden başlatma isteği gönderiliyor...",
+                    "success": "Yeniden başlatma isteği gönderildi. Uygulama birkaç saniye içinde yeniden başlatılacak.",
+                    "error": "Uygulama yeniden başlatma isteği başarısız oldu: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Dalga Formu Kayıtlarını Temizle",
                     "description": "Bu, veritabanındaki tüm dalga formu kayıtlarını silecektir, işlem geri alınamaz.",
@@ -246,6 +308,32 @@
                     "resetting": "Hizmet yapılandırması sıfırlanıyor...",
                     "success": "Hizmet yapılandırması başarıyla sıfırlandı.",
                     "error": "Hizmet yapılandırması sıfırlanamadı: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Çalışıyor",
+                    "invalid_range": "Lütfen geçerli bir başlangıç ve bitiş tarihi seçin.",
+                    "started": "Temizleme görevi başlatıldı.",
+                    "request_failed": "Temizleme görevi başlatılamadı: {{error}}",
+                    "running_hint": "Mevcut görev tamamlanana kadar başka bir temizleme işlemi başlatılamaz.",
+                    "status_query_failed": "Temizleme durumu alınamadı: {{error}}",
+                    "status_idle": "Şu anda hiçbir temizleme görevi çalışmıyor.",
+                    "status_running": "Temizleniyor: {{kind}}.",
+                    "status_success": "Temizleme tamamlandı: {{kind}}.",
+                    "status_failed": "Temizleme başarısız oldu: {{kind}}: {{error}}",
+                    "verification_label": "Doğrulama metni",
+                    "verification_help": "Çalıştır düğmesini etkinleştirmek için lütfen \"{{verificationText}}\" girin.",
+                    "kind_seis_records_full": "Dalga formu kayıtları",
+                    "kind_seis_records_by_date": "Belirtilen tarih aralığındaki dalga formu kayıtları",
+                    "kind_miniseed_full": "MiniSEED dosyaları",
+                    "kind_miniseed_by_date": "Belirtilen tarih aralığındaki MiniSEED dosyaları",
+                    "kind_helicorder_full": "Helicorder dosyaları",
+                    "kind_helicorder_by_date": "Belirtilen tarih aralığındaki Helicorder dosyaları",
+                    "kind_unknown": "Temizleme görevi",
+                    "start_date": "Başlangıç tarihi",
+                    "end_date": "Bitiş tarihi",
+                    "mode_label": "Temizleme modu",
+                    "mode_all": "Tümü",
+                    "mode_range": "Tarih aralığı"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "User Agent",
                     "updated_at": "Güncellenme Zamanı",
                     "actions": "Eylemler"
+                }
+            },
+            "Backup": {
+                "title": "Yedekleme Yönetimi",
+                "select_mode": {
+                    "backup": "Yedek Oluştur",
+                    "restore": "Yedeği Geri Yükle"
+                },
+                "backup_config": {
+                    "title": "Yedek Oluştur",
+                    "description": "Yapılandırma verilerinizi JSON dosyası olarak dışa aktarır. Bu dosyayı kaydedebilir ve daha sonra örneğin sistem geçişi sırasında ayarlarınızı geri yüklemek için kullanabilirsiniz.",
+                    "submit_button": "Yedek Oluştur",
+                    "generating": "Yedekleme verileri oluşturuluyor...",
+                    "success": "Yedekleme verileri başarıyla oluşturuldu.",
+                    "error": "Yedekleme verileri oluşturulamadı: {{error}}"
+                },
+                "restore_config": {
+                    "title": "Yedek Dosyasını Seçin",
+                    "description": "Yapılandırmanızı geri yüklemek için bir JSON yedek dosyası seçin. AnyShake Observer mevcut ayarlarınızı üzerine yazacaktır.",
+                    "submit_button": "Yapılandırmayı Geri Yükle",
+                    "no_file_selected": "Dosya seçilmedi.",
+                    "confirm_title": "Geri Yüklemeyi Onayla",
+                    "confirm_message": "Yapılandırmayı geri yüklemek istediğinizden emin misiniz? Bu işlem mevcut ayarlarınızı üzerine yazacaktır.",
+                    "confirm_button": "Geri Yükle",
+                    "cancel_button": "İptal",
+                    "restoring": "Yapılandırma geri yükleniyor...",
+                    "success": "Yapılandırma başarıyla geri yüklendi.",
+                    "error": "Yapılandırma geri yüklenemedi: {{error}}"
                 }
             }
         }

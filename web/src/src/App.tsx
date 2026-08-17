@@ -16,6 +16,10 @@ import { Login } from './Login';
 import { useCredentialStore } from './stores/credential';
 
 const App = () => {
+    useEffect(() => {
+        hideLoaderAnimation();
+    }, []);
+
     const { t } = useTranslation();
 
     const {
@@ -43,18 +47,19 @@ const App = () => {
     }, [t, needRefreshApp, setNeedRefreshApp, updateServiceWorker]);
 
     const [hasLoggedIn, setHasLoggedIn] = useState(false);
-    const { needRefresh, credential, setCredential } = useCredentialStore();
+    const { needRefresh, credential, setCredential, clearCredential } = useCredentialStore();
     const getUserLoginStatus = useCallback(async () => {
         const { error, code } = await ApiClient.request({
             url: getRestfulApiUrl('/auth'),
             method: 'get',
             ignoreErrors: true
         });
-        if (!error && code === 200) {
-            setHasLoggedIn(true);
+        const ok = !error && code === 200;
+        if (!ok) {
+            clearCredential();
         }
-        hideLoaderAnimation();
-    }, []);
+        setHasLoggedIn(ok);
+    }, [clearCredential]);
     useEffect(() => {
         const { token, lifeTime } = credential;
         if (token.length > 0 && lifeTime > 0) {
@@ -103,7 +108,7 @@ const App = () => {
     }, [t]);
 
     return (
-        <div>
+        <>
             {hasLoggedIn ? (
                 <Entry
                     currentLocale={currentLocale}
@@ -118,7 +123,7 @@ const App = () => {
                 />
             )}
             <Toaster />
-        </div>
+        </>
     );
 };
 

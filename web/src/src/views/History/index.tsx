@@ -1,4 +1,5 @@
 import {
+    mdiBlurLinear,
     mdiCalendarSearch,
     mdiClock,
     mdiLink,
@@ -6,7 +7,8 @@ import {
     mdiLockOpen,
     mdiLockReset,
     mdiTarget,
-    mdiViewDashboard
+    mdiViewDashboard,
+    mdiWaveform
 } from '@mdi/js';
 import Icon from '@mdi/react';
 import { Buffer } from 'buffer';
@@ -14,13 +16,17 @@ import * as _countryFlags from 'country-flag-icons/string/3x2';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import type { ColorMapName } from 'spectrogram-js';
+import { FFTExecutor } from 'spectrogram-js';
 
-import { Card } from '../../components/Card';
-import { DialogModal } from '../../components/DialogModal';
-import { DraggableBox } from '../../components/DraggableBox';
-import { LineChart } from '../../components/LineChart';
-import { List } from '../../components/List';
-import { TimePicker } from '../../components/TimePicker';
+import { LineChart } from '../../components/chart/LineChart';
+import { Spectrogram } from '../../components/chart/Spectrogram';
+import { DialogModal } from '../../components/ui/DialogModal';
+import { DraggableBox } from '../../components/ui/DraggableBox';
+import { Card } from '../../components/widget/Card';
+import { List } from '../../components/widget/List';
+import { TimePicker } from '../../components/widget/TimePicker';
+import { HistoryConstraints } from '../../config/constraints';
 import { IRouterComponent } from '../../config/router';
 import {
     useGetSeismicEventBySourceLazyQuery,
@@ -35,15 +41,9 @@ import { ApiClient } from '../../helpers/request/ApiClient';
 import { useUrlParams } from '../../helpers/request/useUrlParams';
 import { getTimeString } from '../../helpers/utils/getTimeString';
 import { setClipboardText } from '../../helpers/utils/setClipboardText';
+import { useThrottleFnTrailing } from '../../helpers/utils/useThrottleFnTrailing';
 import { useLayoutStore } from '../../stores/layout';
-
-const constraints = {
-    id: 'history',
-    minWidth: 200,
-    minHeight: 150,
-    maxWidth: 800,
-    maxHeight: 600
-};
+import { useRetentionStore } from '../../stores/retention';
 
 const History = ({ currentLocale }: IRouterComponent) => {
     const { t } = useTranslation();
@@ -57,6 +57,12 @@ const History = ({ currentLocale }: IRouterComponent) => {
             ),
         []
     );
+    const sharedFFTExecutor = useMemo(() => new FFTExecutor(HistoryConstraints.fftSize), []);
+
+    const [displayMode, setDisplayMode] = useState<'waveform' | 'spectrogram'>('waveform');
+    const handleToggleDisplayMode = useCallback(() => {
+        setDisplayMode((prevMode) => (prevMode === 'waveform' ? 'spectrogram' : 'waveform'));
+    }, []);
 
     const [isBusy, setIsBusy] = useState(true);
     const [searchParams, setSearchParams] = useSearchParams();
@@ -88,15 +94,18 @@ const History = ({ currentLocale }: IRouterComponent) => {
     }>();
     const [isSelectModalOpen, setIsSelectModalOpen] = useState(false);
     const [seismicEventsData, setSeismicEventsData] = useState<
-        Array<{
-            id: string;
-            region: string;
-            timestamp: number;
-            estimation: number[];
-            primary: ReactNode | ReactNode[];
-            secondary: ReactNode | ReactNode[];
-        }>
-    >([]);
+        Record<
+            string,
+            {
+                id: string;
+                region: string;
+                timestamp: number;
+                estimation: number[];
+                primary: ReactNode | ReactNode[];
+                secondary: ReactNode | ReactNode[];
+            }
+        >
+    >({});
     const handleSearchEvents = useCallback(async () => {
         const requestFn = async () => {
             setIsBusy(true);
@@ -117,66 +126,81 @@ const History = ({ currentLocale }: IRouterComponent) => {
             t('views.History.search_events.searching'),
             (data) => {
                 setSeismicEventsData(
-                    (data ? [...data] : [])
-                        .sort((a, b) => b.timestamp - a.timestamp)
-                        .map((item) => ({
-                            id: item.eventId,
-                            region: item.region,
-                            timestamp: item.timestamp,
-                            estimation: item.estimation,
-                            primary: (
-                                <div className="space-y-2">
-                                    <h3 className="font-semibold text-gray-700">{item.region}</h3>
-                                    <ul className="list-inside list-disc whitespace-nowrap text-gray-500">
-                                        <li>
-                                            {t('views.History.event_list_modal.earthquake_at', {
-                                                time: getTimeString(item.timestamp)
-                                            })}
-                                        </li>
-                                        <li>
-                                            {t('views.History.event_list_modal.p_wave_arrival', {
-                                                time: item.estimation[0].toFixed(1)
-                                            })}
-                                        </li>
-                                        <li>
-                                            {t('views.History.event_list_modal.s_wave_arrival', {
-                                                time: item.estimation[1].toFixed(1)
-                                            })}
-                                        </li>
-                                        <li>
-                                            {t(
-                                                'views.History.event_list_modal.epicenter_distance',
-                                                {
-                                                    distance: item.distance.toFixed(1)
-                                                }
-                                            )}
-                                        </li>
-                                        {item.depth !== -1 && (
+                    (data ? [...data] : []).reduce(
+                        (
+                            acc,
+                            { eventId, region, timestamp, estimation, depth, distance, magnitude }
+                        ) => {
+                            acc[eventId] = {
+                                id: eventId,
+                                region,
+                                timestamp,
+                                estimation,
+                                primary: (
+                                    <div className="space-y-2">
+                                        <h3 className="font-semibold text-gray-700">{region}</h3>
+                                        <ul className="list-inside list-disc whitespace-nowrap text-gray-500">
+                                            <li>
+                                                {t('views.History.event_list_modal.earthquake_at', {
+                                                    time: getTimeString(timestamp)
+                                                })}
+                                            </li>
                                             <li>
                                                 {t(
-                                                    'views.History.event_list_modal.earthquake_depth',
+                                                    'views.History.event_list_modal.p_wave_arrival',
                                                     {
-                                                        depth: item.depth.toFixed(1)
+                                                        time: getTimeString(
+                                                            timestamp + estimation[0] * 1000
+                                                        ),
+                                                        seconds: estimation[0].toFixed(1)
                                                     }
                                                 )}
                                             </li>
-                                        )}
-                                    </ul>
-                                </div>
-                            ),
-                            secondary: (
-                                <div className="flex flex-wrap gap-2 font-medium">
-                                    {Object.keys(item.magnitude).map((key, index) => (
-                                        <div
-                                            key={`${index}-${key}`}
-                                            className="badge badge-soft badge-secondary whitespace-nowrap"
-                                        >
-                                            {`${key} ${item.magnitude[key].toFixed(1)}`}
-                                        </div>
-                                    ))}
-                                </div>
-                            )
-                        })) ?? []
+                                            <li>
+                                                {t(
+                                                    'views.History.event_list_modal.s_wave_arrival',
+                                                    {
+                                                        time: getTimeString(
+                                                            timestamp + estimation[1] * 1000
+                                                        ),
+                                                        seconds: estimation[1].toFixed(1)
+                                                    }
+                                                )}
+                                            </li>
+                                            <li>
+                                                {t(
+                                                    'views.History.event_list_modal.epicenter_distance',
+                                                    { distance: distance.toFixed(1) }
+                                                )}
+                                            </li>
+                                            {depth !== -1 && (
+                                                <li>
+                                                    {t(
+                                                        'views.History.event_list_modal.earthquake_depth',
+                                                        { depth: depth.toFixed(1) }
+                                                    )}
+                                                </li>
+                                            )}
+                                        </ul>
+                                    </div>
+                                ),
+                                secondary: (
+                                    <div className="mx-4 flex flex-wrap font-medium">
+                                        {Object.keys(magnitude).map((key, index) => (
+                                            <div
+                                                key={`${index}-${key}`}
+                                                className="badge badge-soft badge-secondary whitespace-nowrap"
+                                            >
+                                                {`${key} ${magnitude[key].toFixed(1)}`}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            };
+                            return acc;
+                        },
+                        {} as Record<string, (typeof seismicEventsData)[string]>
+                    )
                 );
                 setIsSelectModalOpen(true);
                 return t('views.History.search_events.success', { count: data.length });
@@ -186,7 +210,7 @@ const History = ({ currentLocale }: IRouterComponent) => {
     }, [t, getSeismicEventBySource, selectedSeismicEventSource]);
     const handleChooseEvent = useCallback(
         (eventId: string) => {
-            const selectedEvent = seismicEventsData.find((item) => item.id === eventId);
+            const selectedEvent = seismicEventsData[eventId];
             if (selectedEvent) {
                 const { timestamp, estimation, region } = selectedEvent;
                 const [pWave, sWave] = estimation;
@@ -269,6 +293,7 @@ const History = ({ currentLocale }: IRouterComponent) => {
         availableExports?.formats
     ]);
 
+    const [sampleRate, setSampleRate] = useState(0);
     const [chartData, setChartData] = useState<{ [key: string]: Array<[number, number | null]> }>(
         {}
     );
@@ -279,6 +304,7 @@ const History = ({ currentLocale }: IRouterComponent) => {
             return;
         }
         const requestFn = async () => {
+            setSampleRate(0);
             setChartData({});
             setIsBusy(true);
             const { data, error } = await getSeismicRecords({ variables: { startTime, endTime } });
@@ -311,9 +337,12 @@ const History = ({ currentLocale }: IRouterComponent) => {
                 ) {
                     setActiveChannels((prevChannels) => {
                         const newChannels = { ...prevChannels };
-                        Array.from(currentChannels).forEach((channel) => {
+                        Array.from(currentChannels).forEach((channel, index) => {
                             if (!newChannels[channel]) {
-                                newChannels[channel] = { id: `${constraints.id}_${channel}` };
+                                newChannels[channel] = {
+                                    id: `${HistoryConstraints.id}_${channel}`,
+                                    index
+                                };
                             }
                         });
                         Object.keys(newChannels).forEach((channel) => {
@@ -361,6 +390,7 @@ const History = ({ currentLocale }: IRouterComponent) => {
 
                         lastTimestamp = timestamp;
                     });
+                    setSampleRate(records.length > 0 ? records[0]!.sampleRate : 0);
 
                     return newChartData;
                 });
@@ -371,14 +401,17 @@ const History = ({ currentLocale }: IRouterComponent) => {
         );
     }, [t, startTime, endTime, getSeismicRecords]);
 
-    const [activeChannels, setActiveChannels] = useState<Record<string, { id: string }>>({});
+    const [activeChannels, setActiveChannels] = useState<
+        Record<string, { id: string; index: number }>
+    >({});
     const { config, locks, toggleLock, setLayoutConfig, resetLayoutConfig } = useLayoutStore();
+    const { retention } = useRetentionStore();
     const prevChannelsRef = useRef<string[]>([]);
     const [activeChart, setActiveChart] = useState<string | null>(null); // Track the active chart
 
     const getInitialLayout = useCallback(
-        (id: string) => {
-            if (config[id]?.position && config[id]?.size) {
+        (id: string, index: number) => {
+            if (config[id]?.position && config[id]?.size && config[id]?.spectrogram) {
                 return config[id];
             }
 
@@ -396,12 +429,16 @@ const History = ({ currentLocale }: IRouterComponent) => {
                 size: {
                     width:
                         document.documentElement.clientWidth > 768
-                            ? constraints.minWidth * 2
-                            : constraints.minWidth,
+                            ? HistoryConstraints.minWidth * 2
+                            : HistoryConstraints.minWidth,
                     height:
                         document.documentElement.clientWidth > 768
-                            ? constraints.minWidth * 2
-                            : constraints.minHeight
+                            ? HistoryConstraints.minWidth * 2
+                            : HistoryConstraints.minHeight
+                },
+                spectrogram: {
+                    ...HistoryConstraints.getDynamicDB(index),
+                    colorMap: 'jet' as const
                 }
             };
         },
@@ -429,17 +466,39 @@ const History = ({ currentLocale }: IRouterComponent) => {
     }, [t, searchParams, startTime, endTime, setSearchParams]);
 
     const handleDragStop = useCallback(
-        (channel: string, x: number, y: number) => {
-            setLayoutConfig(channel, { ...getInitialLayout(channel), position: { x, y } });
+        (channel: string, index: number, x: number, y: number) => {
+            setLayoutConfig(channel, { ...getInitialLayout(channel, index), position: { x, y } });
         },
         [getInitialLayout, setLayoutConfig]
     );
 
     const handleResizeStop = useCallback(
-        (channel: string, width: number, height: number) => {
-            setLayoutConfig(channel, { ...getInitialLayout(channel), size: { width, height } });
+        (channel: string, index: number, width: number, height: number) => {
+            setLayoutConfig(channel, {
+                ...getInitialLayout(channel, index),
+                size: { width, height }
+            });
         },
         [getInitialLayout, setLayoutConfig]
+    );
+
+    const handleSpectrogramUpdate = useThrottleFnTrailing(
+        useCallback(
+            (
+                channel: string,
+                index: number,
+                minDB: number,
+                maxDB: number,
+                colorMap: ColorMapName
+            ) => {
+                setLayoutConfig(channel, {
+                    ...getInitialLayout(channel, index),
+                    spectrogram: { maxDB, minDB, colorMap }
+                });
+            },
+            [getInitialLayout, setLayoutConfig]
+        ),
+        500
     );
 
     return (
@@ -598,8 +657,19 @@ const History = ({ currentLocale }: IRouterComponent) => {
                                     ? [...getSeismicEventSourceListData.getEventSource]
                                     : []
                                 )
-                                    .sort((a, b) => a?.country.localeCompare(b?.country ?? '') ?? 0)
-                                    .sort((a, b) => a?.id.localeCompare(b?.id ?? '') ?? 0)
+                                    .sort((a, b) => {
+                                        const nameA =
+                                            a?.locales[currentLocale] ??
+                                            a?.locales[a!.defaultLocale] ??
+                                            a?.id ??
+                                            '';
+                                        const nameB =
+                                            b?.locales[currentLocale] ??
+                                            b?.locales[b!.defaultLocale] ??
+                                            b?.id ??
+                                            '';
+                                        return nameA.localeCompare(nameB);
+                                    })
                                     .map((item, index) => {
                                         const countryFlagImg = countryFlags[item!.country];
                                         return (
@@ -654,9 +724,9 @@ const History = ({ currentLocale }: IRouterComponent) => {
             <div className="flex flex-wrap items-center gap-2">
                 <button
                     className="btn btn-sm flex items-center"
-                    onClick={() => toggleLock(constraints.id)}
+                    onClick={() => toggleLock(HistoryConstraints.id)}
                 >
-                    {locks[constraints.id] ? (
+                    {locks[HistoryConstraints.id] ? (
                         <>
                             <Icon className="flex-shrink-0" path={mdiLock} size={0.7} />
                             <span>{t('views.History.layout_locker.unlock_button')}</span>
@@ -672,6 +742,23 @@ const History = ({ currentLocale }: IRouterComponent) => {
                     <Icon className="flex-shrink-0" path={mdiLockReset} size={0.7} />
                     <span>{t('views.History.reset_layout.reset_button')}</span>
                 </button>
+                {sampleRate >= HistoryConstraints.freqRange[1] * 2 && (
+                    <button
+                        className="btn btn-sm flex items-center"
+                        onClick={handleToggleDisplayMode}
+                    >
+                        <Icon
+                            className="flex-shrink-0"
+                            path={displayMode === 'waveform' ? mdiBlurLinear : mdiWaveform}
+                            size={0.7}
+                        />
+                        <span>
+                            {displayMode === 'waveform'
+                                ? t('views.History.display_mode.spectrogram_mode')
+                                : t('views.History.display_mode.waveform_mode')}
+                        </span>
+                    </button>
+                )}
                 <button className="btn btn-sm" onClick={handleShareLink}>
                     <Icon className="flex-shrink-0" path={mdiLink} size={0.7} />
                     <span>{t('views.History.share_link.share_button')}</span>
@@ -691,34 +778,92 @@ const History = ({ currentLocale }: IRouterComponent) => {
                         }
                         return 0;
                     })
-                    .map((channel, index) => (
-                        <DraggableBox
-                            layout={getInitialLayout(activeChannels[channel].id)}
-                            locked={locks[constraints.id]}
-                            constraints={constraints}
-                            key={`${index}-${channel}`}
-                            onDragStart={() => {
-                                setActiveChart(channel);
-                            }}
-                            onDragStop={(x, y) => {
-                                handleDragStop(activeChannels[channel].id, x, y);
-                            }}
-                            onResizeStop={(width, height) =>
-                                handleResizeStop(activeChannels[channel].id, width, height)
-                            }
-                        >
-                            <LineChart
-                                title={channel}
-                                lineColor="#8A3EED"
-                                height={'100%'}
-                                yPosition="right"
-                                zoom={true}
-                                minSpanValue={100}
-                                animation={false}
-                                data={chartData[channel]}
-                            />
-                        </DraggableBox>
-                    ))}
+                    .map((channel) => {
+                        const initialLayout = getInitialLayout(
+                            activeChannels[channel].id,
+                            activeChannels[channel].index
+                        );
+                        return (
+                            <DraggableBox
+                                key={channel}
+                                layout={initialLayout}
+                                locked={locks[HistoryConstraints.id]}
+                                constraints={HistoryConstraints}
+                                onDragStart={() => setActiveChart(channel)}
+                                onDragStop={(x, y) =>
+                                    handleDragStop(
+                                        activeChannels[channel].id,
+                                        activeChannels[channel].index,
+                                        x,
+                                        y
+                                    )
+                                }
+                                onResizeStop={(width, height) =>
+                                    handleResizeStop(
+                                        activeChannels[channel].id,
+                                        activeChannels[channel].index,
+                                        width,
+                                        height
+                                    )
+                                }
+                            >
+                                <div
+                                    className={
+                                        displayMode === 'waveform'
+                                            ? 'block h-full w-full'
+                                            : 'hidden'
+                                    }
+                                >
+                                    <LineChart
+                                        minSpanValue={HistoryConstraints.minSpanValue}
+                                        lineColor={HistoryConstraints.lineColor}
+                                        height={'100%'}
+                                        yPosition="right"
+                                        title={channel}
+                                        zoom={true}
+                                        animation={false}
+                                        data={chartData[channel]}
+                                    />
+                                </div>
+                                <div
+                                    className={
+                                        displayMode === 'spectrogram'
+                                            ? 'block h-full w-full'
+                                            : 'hidden'
+                                    }
+                                >
+                                    <Spectrogram
+                                        title={channel}
+                                        duration={retention}
+                                        overlap={HistoryConstraints.overlap}
+                                        freqRange={HistoryConstraints.freqRange}
+                                        windowSize={HistoryConstraints.windowSize}
+                                        maxDB={initialLayout.spectrogram.maxDB}
+                                        minDB={initialLayout.spectrogram.minDB}
+                                        colorMap={initialLayout.spectrogram.colorMap}
+                                        fftExecutor={sharedFFTExecutor}
+                                        data={
+                                            chartData[channel]
+                                                ? chartData[channel].filter(
+                                                      (v): v is [number, number] => v[1] !== null
+                                                  )
+                                                : []
+                                        }
+                                        sampleRate={sampleRate}
+                                        onSpectrogramUpdate={(minDB, maxDB, colorMap) =>
+                                            handleSpectrogramUpdate(
+                                                activeChannels[channel].id,
+                                                activeChannels[channel].index,
+                                                minDB,
+                                                maxDB,
+                                                colorMap
+                                            )
+                                        }
+                                    />
+                                </div>
+                            </DraggableBox>
+                        );
+                    })}
             </div>
 
             <DialogModal
@@ -746,9 +891,11 @@ const History = ({ currentLocale }: IRouterComponent) => {
                 onClose={() => setIsSelectModalOpen(false)}
             >
                 <List
-                    className="h-96"
+                    className="overflow-y-scroll"
                     onClick={(id) => handleChooseEvent(id)}
-                    data={seismicEventsData}
+                    data={Object.values(seismicEventsData).sort(
+                        (a, b) => b.timestamp - a.timestamp
+                    )}
                 />
             </DialogModal>
         </div>

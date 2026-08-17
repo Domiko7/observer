@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Ouça a terra sussurrar."
+        },
+        "router": {
+            "home": "Status da Estação",
+            "realtime": "Forma de Onda em Tempo Real",
+            "history": "Forma de Onda Histórica",
+            "download": "Download de Dados",
+            "settings": "Configurações do Sistema",
+            "default": "Página não encontrada"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Oops! Algo correu mal.",
@@ -8,7 +22,23 @@
             "yes": "Sim",
             "no": "Não",
             "add_new_item": "Inserir novo item.",
-            "editing_list": "A editar Lista de {{fieldName}}"
+            "editing_list": "A editar Lista de {{fieldName}}",
+            "table_value": "Valor",
+            "table_actions": "Ações"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Configurações do espectrograma",
+                "min_db": "dB mínimo",
+                "max_db": "dB máximo"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Configurações do espectrograma",
+                "min_db": "dB mínimo",
+                "max_db": "dB máximo"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Selecionar um Evento Sísmico",
                 "earthquake_at": "Sismo às {{time}}",
-                "p_wave_arrival": "Chegada da Onda P {{time}} segundos",
-                "s_wave_arrival": "Chegada da Onda S {{time}} segundos",
+                "p_wave_arrival": "Chegada da Onda P {{time}} ({{seconds}} seg)",
+                "s_wave_arrival": "Chegada da Onda S {{time}} ({{seconds}} seg)",
                 "epicenter_distance": "Epicentro {{distance}} km",
                 "earthquake_depth": "Profundidade {{depth}} km",
                 "selected_an_event": "Selecionado um evento sísmico em {{region}} às {{time}}."
@@ -92,6 +122,10 @@
                 "confirm_title": "Confirmar Reposição",
                 "confirm_button": "Repor",
                 "cancel_button": "Cancelar"
+            },
+            "display_mode": {
+                "waveform_mode": "Modo de forma de onda",
+                "spectrogram_mode": "Modo de espectrograma"
             },
             "share_link": {
                 "share_button": "Partilhar Link",
@@ -138,6 +172,11 @@
                 "success": "Ligado à estação, servidor ativo há {{uptime}} segundos, atualizado às {{updatedAt}}.",
                 "error": "Ocorreu um erro ao ligar à estação, por favor verifique a sua ligação."
             },
+            "upgrade": {
+                "update_available": "Está disponível uma nova versão {{latest}}. Pode ativar as atualizações automáticas ou transferir e instalar manualmente.",
+                "restart_needed": "A versão mais recente {{latest}} foi instalada, mas {{current}} ainda está em execução. Reinicie o software numa altura conveniente para aplicar a atualização.",
+                "manual_upgrade_needed": "Foi detetada uma nova versão {{latest}}, mas a versão atual {{current}} é inferior à versão mínima compatível {{required}}. É necessária uma atualização manual."
+            },
             "station_location": {
                 "title": "Localização da Estação"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Voltar"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Modo de forma de onda",
+                "spectrogram_mode": "Modo de espectrograma"
+            },
             "reset_layout": {
                 "reset_button": "Repor Tudo",
                 "confirm_message": "Tem a certeza de que deseja repor o layout?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Bloquear Layout",
                 "unlock_button": "Desbloquear Layout"
+            },
+            "record_data": {
+                "start_button": "Iniciar Gravação",
+                "stop_button": "Parar Gravação",
+                "start_recording": "A gravação começou às {{startedAt}}.",
+                "link_created": "Gravação parada às {{endedAt}} ({{duration}} segundos). Um link foi gerado.",
+                "no_data_recorded": "Nenhum dado foi gravado durante este período."
             },
             "connectivity": {
                 "connecting": "Sem ligação, a ligar agora...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Zona Perigosa",
+                "restart_application": {
+                    "title": "Reiniciar toda a aplicação",
+                    "description": "Isto irá reiniciar toda a aplicação. O processo pode demorar alguns instantes e irá fechar temporariamente todas as ligações ativas, causando interrupções nos serviços e nas gravações.",
+                    "submit_button": "Reiniciar aplicação",
+                    "confirm_title": "Confirmar reinício",
+                    "confirm_message": "Tem a certeza de que pretende reiniciar a aplicação?",
+                    "confirm_button": "Reiniciar",
+                    "cancel_button": "Cancelar",
+                    "restarting": "A enviar pedido de reinício da aplicação...",
+                    "success": "Pedido de reinício enviado. A aplicação será reiniciada em alguns segundos.",
+                    "error": "Falha ao solicitar o reinício da aplicação: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Purgar Registos de Forma de Onda",
                     "description": "Isto irá apagar todos os registos de forma de onda na base de dados. A operação é irreversível.",
@@ -246,6 +308,32 @@
                     "resetting": "A repor configuração do serviço...",
                     "success": "Configuração do serviço reposta com sucesso.",
                     "error": "Falha ao repor a configuração do serviço: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Em execução",
+                    "invalid_range": "Selecione uma data de início e fim válidas.",
+                    "started": "A tarefa de purga foi iniciada.",
+                    "request_failed": "Falha ao iniciar a tarefa de purga: {{error}}",
+                    "running_hint": "Não é possível iniciar outra operação de purga enquanto a atual não terminar.",
+                    "status_query_failed": "Falha ao obter o estado da purga: {{error}}",
+                    "status_idle": "Atualmente, não existe nenhuma tarefa de purga em execução.",
+                    "status_running": "A purgar: {{kind}}.",
+                    "status_success": "Purga concluída: {{kind}}.",
+                    "status_failed": "Purga falhada: {{kind}}: {{error}}",
+                    "verification_label": "Texto de verificação",
+                    "verification_help": "Introduza \"{{verificationText}}\" para ativar o botão de execução.",
+                    "kind_seis_records_full": "Registos de forma de onda",
+                    "kind_seis_records_by_date": "Registos de forma de onda no intervalo de datas especificado",
+                    "kind_miniseed_full": "Ficheiros MiniSEED",
+                    "kind_miniseed_by_date": "Ficheiros MiniSEED no intervalo de datas especificado",
+                    "kind_helicorder_full": "Ficheiros Helicorder",
+                    "kind_helicorder_by_date": "Ficheiros Helicorder no intervalo de datas especificado",
+                    "kind_unknown": "Tarefa de purga",
+                    "start_date": "Data de início",
+                    "end_date": "Data de fim",
+                    "mode_label": "Modo de purga",
+                    "mode_all": "Tudo",
+                    "mode_range": "Intervalo de datas"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "User Agent",
                     "updated_at": "Atualizado em",
                     "actions": "Ações"
+                }
+            },
+            "Backup": {
+                "title": "Gestão de Cópias de Segurança",
+                "select_mode": {
+                    "backup": "Criar Cópia de Segurança",
+                    "restore": "Restaurar Cópia de Segurança"
+                },
+                "backup_config": {
+                    "title": "Criar uma Cópia de Segurança",
+                    "description": "Isto exportará os seus dados de configuração como um ficheiro JSON. Pode guardar este ficheiro e utilizá-lo mais tarde para restaurar a sua configuração, por exemplo, ao migrar para um novo sistema.",
+                    "submit_button": "Gerar Cópia de Segurança",
+                    "generating": "A gerar dados da cópia de segurança...",
+                    "success": "Dados da cópia de segurança gerados com sucesso.",
+                    "error": "Falha ao gerar dados da cópia de segurança: {{error}}"
+                },
+                "restore_config": {
+                    "title": "Selecionar Ficheiro de Cópia de Segurança",
+                    "description": "Selecione um ficheiro JSON de cópia de segurança para restaurar a sua configuração. O AnyShake Observer substituirá as suas definições atuais.",
+                    "submit_button": "Restaurar Configuração",
+                    "no_file_selected": "Nenhum ficheiro selecionado.",
+                    "confirm_title": "Confirmar Restauração",
+                    "confirm_message": "Tem a certeza de que deseja restaurar a configuração? Esta ação substituirá as suas definições atuais.",
+                    "confirm_button": "Restaurar",
+                    "cancel_button": "Cancelar",
+                    "restoring": "A restaurar configuração...",
+                    "success": "Configuração restaurada com sucesso.",
+                    "error": "Falha ao restaurar configuração: {{error}}"
                 }
             }
         }

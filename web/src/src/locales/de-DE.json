@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Hoher Geist der Erde."
+        },
+        "router": {
+            "home": "Stationsstatus",
+            "realtime": "Echtzeit-Wellenform",
+            "history": "Historische Wellenform",
+            "download": "Daten herunterladen",
+            "settings": "Systemeinstellungen",
+            "default": "Seite nicht gefunden"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Hoppla! Etwas ist schiefgelaufen.",
@@ -8,7 +22,23 @@
             "yes": "Ja",
             "no": "Nein",
             "add_new_item": "Neuen Eintrag eingeben.",
-            "editing_list": "Liste von {{fieldName}} bearbeiten"
+            "editing_list": "Liste von {{fieldName}} bearbeiten",
+            "table_value": "Wert",
+            "table_actions": "Aktionen"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Spektrogramm-Einstellungen",
+                "min_db": "Min. dB",
+                "max_db": "Max. dB"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Spektrogramm-Einstellungen",
+                "min_db": "Min. dB",
+                "max_db": "Max. dB"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Ein seismisches Ereignis auswählen",
                 "earthquake_at": "Erdbeben um {{time}}",
-                "p_wave_arrival": "P-Wellen-Ankunft {{time}} Sekunden",
-                "s_wave_arrival": "S-Wellen-Ankunft {{time}} Sekunden",
+                "p_wave_arrival": "P-Wellen-Ankunft {{time}} ({{seconds}} sek)",
+                "s_wave_arrival": "S-Wellen-Ankunft {{time}} ({{seconds}} sek)",
                 "epicenter_distance": "Epizentrum {{distance}} km",
                 "earthquake_depth": "Tiefe {{depth}} km",
                 "selected_an_event": "Ein Erdbebenereignis in {{region}} um {{time}} ausgewählt."
@@ -92,6 +122,10 @@
                 "confirm_title": "Zurücksetzen bestätigen",
                 "confirm_button": "Zurücksetzen",
                 "cancel_button": "Abbrechen"
+            },
+            "display_mode": {
+                "waveform_mode": "Wellenformmodus",
+                "spectrogram_mode": "Spektrogramm-Modus"
             },
             "share_link": {
                 "share_button": "Link teilen",
@@ -138,6 +172,11 @@
                 "success": "Mit Station verbunden, Server läuft seit {{uptime}} Sekunden, aktualisiert um {{updatedAt}}.",
                 "error": "Fehler beim Verbinden mit der Station, bitte überprüfen Sie Ihre Verbindung."
             },
+            "upgrade": {
+                "update_available": "Eine neue Version {{latest}} ist verfügbar. Sie können automatische Updates aktivieren oder das Update manuell herunterladen und installieren.",
+                "restart_needed": "Die neueste Version {{latest}} wurde installiert, derzeit läuft noch {{current}}. Bitte starten Sie die Software zu einem geeigneten Zeitpunkt neu, um das Update zu übernehmen.",
+                "manual_upgrade_needed": "Eine neue Version {{latest}} wurde erkannt, aber die aktuelle Version {{current}} liegt unter der minimal kompatiblen Version {{required}}. Ein manuelles Upgrade ist erforderlich."
+            },
             "station_location": {
                 "title": "Stationsstandort"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Zurück"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Wellenformmodus",
+                "spectrogram_mode": "Spektrogramm-Modus"
+            },
             "reset_layout": {
                 "reset_button": "Alles zurücksetzen",
                 "confirm_message": "Sind Sie sicher, dass Sie das Layout zurücksetzen möchten?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Layout sperren",
                 "unlock_button": "Layout entsperren"
+            },
+            "record_data": {
+                "start_button": "Aufnahme starten",
+                "stop_button": "Aufnahme stoppen",
+                "start_recording": "Aufnahme wurde um {{startedAt}} gestartet.",
+                "link_created": "Aufnahme gestoppt um {{endedAt}} ({{duration}} Sekunden). Ein Link wurde erstellt.",
+                "no_data_recorded": "Während dieses Zeitraums wurden keine Daten aufgezeichnet."
             },
             "connectivity": {
                 "connecting": "Keine Verbindung, wird jetzt verbunden...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Gefahrenbereich",
+                "restart_application": {
+                    "title": "Gesamte Anwendung neu starten",
+                    "description": "Die gesamte Anwendung wird neu gestartet. Dies kann einen kurzen Moment dauern und schließt vorübergehend alle aktiven Verbindungen, wodurch Dienste und Aufzeichnungen unterbrochen werden.",
+                    "submit_button": "Anwendung neu starten",
+                    "confirm_title": "Neustart bestätigen",
+                    "confirm_message": "Möchten Sie die Anwendung wirklich neu starten?",
+                    "confirm_button": "Neu starten",
+                    "cancel_button": "Abbrechen",
+                    "restarting": "Neustartanforderung wird gesendet...",
+                    "success": "Neustartanforderung gesendet. Die Anwendung wird in wenigen Sekunden neu gestartet.",
+                    "error": "Neustart der Anwendung konnte nicht angefordert werden: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Wellenform-Aufzeichnungen löschen",
                     "description": "Dies löscht alle Wellenform-Aufzeichnungen in der Datenbank. Dieser Vorgang kann nicht rückgängig gemacht werden.",
@@ -246,6 +308,32 @@
                     "resetting": "Dienstkonfiguration wird zurückgesetzt...",
                     "success": "Dienstkonfiguration erfolgreich zurückgesetzt.",
                     "error": "Fehler beim Zurücksetzen der Dienstkonfiguration: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Läuft",
+                    "invalid_range": "Bitte wählen Sie ein gültiges Start- und Enddatum.",
+                    "started": "Der Bereinigungsauftrag wurde gestartet.",
+                    "request_failed": "Der Start des Bereinigungsauftrags ist fehlgeschlagen: {{error}}",
+                    "running_hint": "Ein weiterer Bereinigungsauftrag kann erst gestartet werden, wenn der aktuelle abgeschlossen ist.",
+                    "status_query_failed": "Der Status der Bereinigung konnte nicht abgerufen werden: {{error}}",
+                    "status_idle": "Derzeit läuft kein Bereinigungsauftrag.",
+                    "status_running": "Bereinigung läuft: {{kind}}.",
+                    "status_success": "Bereinigung abgeschlossen: {{kind}}.",
+                    "status_failed": "Bereinigung fehlgeschlagen: {{kind}}: {{error}}",
+                    "verification_label": "Verifizierungstext",
+                    "verification_help": "Bitte geben Sie \"{{verificationText}}\" ein, um die Ausführen-Schaltfläche zu aktivieren.",
+                    "kind_seis_records_full": "Wellenform-Aufzeichnungen",
+                    "kind_seis_records_by_date": "Wellenform-Aufzeichnungen im angegebenen Datumsbereich",
+                    "kind_miniseed_full": "MiniSEED-Dateien",
+                    "kind_miniseed_by_date": "MiniSEED-Dateien im angegebenen Datumsbereich",
+                    "kind_helicorder_full": "Helicorder-Dateien",
+                    "kind_helicorder_by_date": "Helicorder-Dateien im angegebenen Datumsbereich",
+                    "kind_unknown": "Bereinigungsauftrag",
+                    "start_date": "Startdatum",
+                    "end_date": "Enddatum",
+                    "mode_label": "Bereinigungsmodus",
+                    "mode_all": "Alle",
+                    "mode_range": "Datumsbereich"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "User-Agent",
                     "updated_at": "Aktualisiert am",
                     "actions": "Aktionen"
+                }
+            },
+            "Backup": {
+                "title": "Backup-Verwaltung",
+                "select_mode": {
+                    "backup": "Backup erstellen",
+                    "restore": "Backup wiederherstellen"
+                },
+                "backup_config": {
+                    "title": "Backup erstellen",
+                    "description": "Dies exportiert Ihre Konfigurationsdaten als JSON-Datei. Sie können diese Datei speichern und später verwenden, um Ihre Einstellungen beispielsweise bei einer Migration wiederherzustellen.",
+                    "submit_button": "Backup erstellen",
+                    "generating": "Backup-Daten werden generiert...",
+                    "success": "Backup-Daten wurden erfolgreich erstellt.",
+                    "error": "Fehler beim Erstellen der Backup-Daten: {{error}}"
+                },
+                "restore_config": {
+                    "title": "Backup-Datei auswählen",
+                    "description": "Wählen Sie eine JSON-Backup-Datei aus, um Ihre Konfiguration wiederherzustellen. AnyShake Observer überschreibt dabei Ihre aktuellen Einstellungen.",
+                    "submit_button": "Konfiguration wiederherstellen",
+                    "no_file_selected": "Keine Datei ausgewählt.",
+                    "confirm_title": "Wiederherstellung bestätigen",
+                    "confirm_message": "Sind Sie sicher, dass Sie die Konfiguration wiederherstellen möchten? Dadurch werden Ihre aktuellen Einstellungen überschrieben.",
+                    "confirm_button": "Wiederherstellen",
+                    "cancel_button": "Abbrechen",
+                    "restoring": "Konfiguration wird wiederhergestellt...",
+                    "success": "Konfiguration wurde erfolgreich wiederhergestellt.",
+                    "error": "Fehler bei der Wiederherstellung der Konfiguration: {{error}}"
                 }
             }
         }

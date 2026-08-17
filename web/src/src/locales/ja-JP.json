@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "地球のささやき"
+        },
+        "router": {
+            "home": "現在の状況",
+            "realtime": "リアルタイム波形",
+            "history": "履歴波形",
+            "download": "データダウンロード",
+            "settings": "システム設定",
+            "default": "ページが見つかりません"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "おっと！ 何か問題が発生しました。",
@@ -8,7 +22,23 @@
             "yes": "はい",
             "no": "いいえ",
             "add_new_item": "新しい項目を入力してください。",
-            "editing_list": "{{fieldName}} のリストを編集中"
+            "editing_list": "{{fieldName}} のリストを編集中",
+            "table_value": "値",
+            "table_actions": "操作"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "スペクトログラム設定",
+                "min_db": "最小 dB",
+                "max_db": "最大 dB"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "スペクトログラム設定",
+                "min_db": "最小 dB",
+                "max_db": "最大 dB"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "地震イベントを選択",
                 "earthquake_at": "{{time}} に地震発生",
-                "p_wave_arrival": "P 波到達 {{time}} 秒",
-                "s_wave_arrival": "S 波到達 {{time}} 秒",
+                "p_wave_arrival": "P 波到達 {{time}} ({{seconds}} 秒)",
+                "s_wave_arrival": "S 波到達 {{time}} ({{seconds}} 秒)",
                 "epicenter_distance": "震源距離 {{distance}} km",
                 "earthquake_depth": "深さ {{depth}} km",
                 "selected_an_event": "{{region}} で {{time}} に発生した地震イベントを選択しました。"
@@ -92,6 +122,10 @@
                 "confirm_title": "リセット確認",
                 "confirm_button": "リセット",
                 "cancel_button": "キャンセル"
+            },
+            "display_mode": {
+                "waveform_mode": "波形モード",
+                "spectrogram_mode": "スペクトログラムモード"
             },
             "share_link": {
                 "share_button": "リンクを共有",
@@ -138,6 +172,11 @@
                 "success": "観測点に接続しました。サーバー稼働時間 {{uptime}} 秒、更新日時 {{updatedAt}}。",
                 "error": "観測点への接続中にエラーが発生しました。接続を確認してください。"
             },
+            "upgrade": {
+                "update_available": "新しいバージョン {{latest}} が利用可能です。自動更新を有効にするか、手動でダウンロードしてインストールできます。",
+                "restart_needed": "最新バージョン {{latest}} はインストールされていますが、現在 {{current}} が実行中です。更新を適用するには、都合のよいタイミングでソフトウェアを再起動してください。",
+                "manual_upgrade_needed": "新しいバージョン {{latest}} が検出されましたが、現在のバージョン {{current}} は最低互換バージョン {{required}} を下回っています。手動でのアップグレードが必要です。"
+            },
             "station_location": {
                 "title": "観測点の場所"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "戻る"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "波形モード",
+                "spectrogram_mode": "スペクトログラムモード"
+            },
             "reset_layout": {
                 "reset_button": "すべてリセット",
                 "confirm_message": "レイアウトをリセットしてもよろしいですか？",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "レイアウトをロック",
                 "unlock_button": "レイアウトをアンロック"
+            },
+            "record_data": {
+                "start_button": "録音開始",
+                "stop_button": "録音停止",
+                "start_recording": "{{startedAt}} に録音を開始しました。",
+                "link_created": "{{endedAt}} に録音を停止しました（{{duration}} 秒）。リンクが生成されました。",
+                "no_data_recorded": "この期間中に記録されたデータはありません。"
             },
             "connectivity": {
                 "connecting": "接続なし、接続中...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "危険ゾーン",
+                "restart_application": {
+                    "title": "アプリケーション全体を再起動",
+                    "description": "アプリケーション全体を再起動します。完了までに少し時間がかかる場合があり、その間すべての接続が一時的に切断され、サービスおよび記録が中断されます。",
+                    "submit_button": "アプリケーションを再起動",
+                    "confirm_title": "再起動の確認",
+                    "confirm_message": "アプリケーションを再起動してもよろしいですか？",
+                    "confirm_button": "再起動",
+                    "cancel_button": "キャンセル",
+                    "restarting": "再起動リクエストを送信しています...",
+                    "success": "再起動リクエストを送信しました。数秒後にアプリケーションが再起動されます。",
+                    "error": "アプリケーションの再起動リクエストに失敗しました: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "波形記録を消去",
                     "description": "データベース内のすべての波形記録が削除されます。この操作は元に戻せません。",
@@ -246,6 +308,32 @@
                     "resetting": "サービス設定をリセット中...",
                     "success": "サービス設定を正常にリセットしました。",
                     "error": "サービス設定のリセットに失敗しました： {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "実行中",
+                    "invalid_range": "有効な開始日と終了日を選択してください。",
+                    "started": "クリーンアップタスクを開始しました。",
+                    "request_failed": "クリーンアップタスクの開始に失敗しました: {{error}}",
+                    "running_hint": "現在のタスクが完了するまで、別のクリーンアップ操作は開始できません。",
+                    "status_query_failed": "クリーンアップ状態の取得に失敗しました: {{error}}",
+                    "status_idle": "現在、実行中のクリーンアップタスクはありません。",
+                    "status_running": "クリーンアップ中: {{kind}}。",
+                    "status_success": "クリーンアップ完了: {{kind}}。",
+                    "status_failed": "クリーンアップ失敗: {{kind}}: {{error}}",
+                    "verification_label": "確認用テキスト",
+                    "verification_help": "実行ボタンを有効にするには \"{{verificationText}}\" を入力してください。",
+                    "kind_seis_records_full": "波形記録",
+                    "kind_seis_records_by_date": "指定した期間の波形記録",
+                    "kind_miniseed_full": "MiniSEED ファイル",
+                    "kind_miniseed_by_date": "指定した期間の MiniSEED ファイル",
+                    "kind_helicorder_full": "Helicorder ファイル",
+                    "kind_helicorder_by_date": "指定した期間の Helicorder ファイル",
+                    "kind_unknown": "クリーンアップタスク",
+                    "start_date": "開始日",
+                    "end_date": "終了日",
+                    "mode_label": "クリーンアップ方法",
+                    "mode_all": "すべて",
+                    "mode_range": "日付範囲"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "ユーザーエージェント",
                     "updated_at": "更新日時",
                     "actions": "操作"
+                }
+            },
+            "Backup": {
+                "title": "バックアップ管理",
+                "select_mode": {
+                    "backup": "バックアップを作成",
+                    "restore": "バックアップを復元"
+                },
+                "backup_config": {
+                    "title": "バックアップを作成",
+                    "description": "設定データを JSON ファイルとしてエクスポートします。このファイルを保存しておけば、システム移行などの際に設定を復元できます。",
+                    "submit_button": "バックアップを生成",
+                    "generating": "バックアップデータを生成中...",
+                    "success": "バックアップデータが正常に生成されました。",
+                    "error": "バックアップデータの生成に失敗しました: {{error}}"
+                },
+                "restore_config": {
+                    "title": "バックアップファイルを選択",
+                    "description": "JSON バックアップファイルを選択して設定を復元します。AnyShake Observer は現在の設定を上書きします。",
+                    "submit_button": "設定を復元",
+                    "no_file_selected": "ファイルが選択されていません。",
+                    "confirm_title": "復元の確認",
+                    "confirm_message": "本当に設定を復元しますか？この操作は現在の設定を上書きします。",
+                    "confirm_button": "復元",
+                    "cancel_button": "キャンセル",
+                    "restoring": "設定を復元中...",
+                    "success": "設定が正常に復元されました。",
+                    "error": "設定の復元に失敗しました: {{error}}"
                 }
             }
         }

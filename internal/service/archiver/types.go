@@ -3,6 +3,7 @@ package archiver
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 
 	"github.com/anyshake/observer/internal/dao/action"
 	"github.com/anyshake/observer/internal/dao/model"
@@ -36,6 +37,7 @@ type ArchiverServiceImpl struct {
 
 	rotation         int
 	cleanupCountDown int
+	cleanupRunning   atomic.Bool
 	insertCountDown  int
 	recordBuffer     []model.SeisRecord
 }

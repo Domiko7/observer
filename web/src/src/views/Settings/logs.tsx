@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 
-import { CodeBlock } from '../../components/CodeBlock';
-import { ErrorPage } from '../../components/ErrorPage';
+import { ErrorPage } from '../../components/ui/ErrorPage';
+import { CodeBlock } from '../../components/widget/CodeBlock';
+import { SettingsConstraints } from '../../config/constraints';
 import { useGetApplicationLogsQuery } from '../../graphql';
 
 export const Logs = () => {
@@ -9,7 +10,7 @@ export const Logs = () => {
         data: getApplicationLogsData,
         loading: getApplicationLogsLoading,
         error: getApplicationLogsError
-    } = useGetApplicationLogsQuery({ pollInterval: 5000 });
+    } = useGetApplicationLogsQuery({ pollInterval: SettingsConstraints.pollInterval });
 
     const [applicationLogs, setApplicationLogs] = useState<string>('');
     useEffect(() => {
@@ -18,7 +19,7 @@ export const Logs = () => {
                 getApplicationLogsData?.getApplicationLogs
                     ?.map((line) => {
                         const logObj = JSON.parse(line);
-                        return `${logObj.time} - [${logObj.level}] - [${logObj.module}] - ${logObj.msg}`;
+                        return `${logObj.time} - [${logObj.level}] - [${logObj.module}] - ${logObj.message}`;
                     })
                     .reverse()
                     .join('\n')

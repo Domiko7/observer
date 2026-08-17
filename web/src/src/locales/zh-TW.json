@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "聽見地球"
+        },
+        "router": {
+            "home": "當前站況",
+            "realtime": "即時波形",
+            "history": "歷史資料",
+            "download": "資料下載",
+            "settings": "系統設定",
+            "default": "找不到頁面"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "哎呀！ 出錯了。",
@@ -8,7 +22,23 @@
             "yes": "是",
             "no": "否",
             "add_new_item": "輸入新項目。",
-            "editing_list": "編輯 {{fieldName}} 列表"
+            "editing_list": "編輯 {{fieldName}} 列表",
+            "table_value": "內容",
+            "table_actions": "操作"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "頻譜圖設定",
+                "min_db": "最小 dB",
+                "max_db": "最大 dB"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "頻譜圖設定",
+                "min_db": "最小 dB",
+                "max_db": "最大 dB"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "選擇一個地震事件",
                 "earthquake_at": "地震發生於 {{time}}",
-                "p_wave_arrival": "P 波到達 {{time}} 秒",
-                "s_wave_arrival": "S 波到達 {{time}} 秒",
+                "p_wave_arrival": "P 波到達 {{time}} ({{seconds}} 秒)",
+                "s_wave_arrival": "S 波到達 {{time}} ({{seconds}} 秒)",
                 "epicenter_distance": "震央距離 {{distance}} km",
                 "earthquake_depth": "深度 {{depth}} km",
                 "selected_an_event": "已選擇位於 {{region}} 於 {{time}} 發生的地震事件。"
@@ -92,6 +122,10 @@
                 "confirm_title": "確認重設",
                 "confirm_button": "重設",
                 "cancel_button": "取消"
+            },
+            "display_mode": {
+                "waveform_mode": "波形模式",
+                "spectrogram_mode": "頻譜圖模式"
             },
             "share_link": {
                 "share_button": "分享連結",
@@ -138,6 +172,11 @@
                 "success": "已連接到測站，伺服器已運行 {{uptime}} 秒，更新於 {{updatedAt}}。",
                 "error": "連接測站時發生錯誤，請檢查您的連線。"
             },
+            "upgrade": {
+                "update_available": "有可用更新版本 {{latest}}。您可啟用自動更新，或手動下載並安裝。",
+                "restart_needed": "已完成最新版本 {{latest}} 的安裝，目前仍在執行 {{current}}。請於合適的時間重新啟動軟體以套用更新。",
+                "manual_upgrade_needed": "已偵測到新版本 {{latest}}，但目前版本 {{current}} 低於最低相容版本 {{required}}，需手動升級。"
+            },
             "station_location": {
                 "title": "測站位置"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "返回"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "波形模式",
+                "spectrogram_mode": "頻譜圖模式"
+            },
             "reset_layout": {
                 "reset_button": "全部重設",
                 "confirm_message": "您確定要重設佈局嗎？",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "鎖定佈局",
                 "unlock_button": "解鎖佈局"
+            },
+            "record_data": {
+                "start_button": "開始錄製",
+                "stop_button": "停止錄製",
+                "start_recording": "錄製已於 {{startedAt}} 開始。",
+                "link_created": "錄製於 {{endedAt}} 停止（共 {{duration}} 秒）。已生成連結。",
+                "no_data_recorded": "此期間內未錄製任何資料。"
             },
             "connectivity": {
                 "connecting": "沒有連線，正在嘗試連接...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "危險區域",
+                "restart_application": {
+                    "title": "重新啟動整個應用程式",
+                    "description": "此操作將重新啟動整個應用程式，可能需要短暫時間，並會暫時關閉所有使用中的連線，導致服務與記錄中斷。",
+                    "submit_button": "重新啟動應用程式",
+                    "confirm_title": "確認重新啟動",
+                    "confirm_message": "您確定要重新啟動應用程式嗎？",
+                    "confirm_button": "重新啟動",
+                    "cancel_button": "取消",
+                    "restarting": "正在送出重新啟動請求...",
+                    "success": "重新啟動請求已送出，應用程式將在數秒後重新啟動。",
+                    "error": "重新啟動應用程式請求失敗：{{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "清除波形紀錄",
                     "description": "這將刪除資料庫中的所有波形紀錄，此操作不可逆。",
@@ -246,6 +308,32 @@
                     "resetting": "正在重設服務設定...",
                     "success": "已成功重設服務設定。",
                     "error": "重設服務設定失敗：{{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "執行中",
+                    "invalid_range": "請選擇有效的起始與截止日期。",
+                    "started": "清理任務已開始。",
+                    "request_failed": "清理任務啟動失敗：{{error}}",
+                    "running_hint": "目前任務完成前，無法啟動其他清理操作。",
+                    "status_query_failed": "取得清理狀態失敗：{{error}}",
+                    "status_idle": "目前沒有清理任務執行中。",
+                    "status_running": "正在清理：{{kind}}。",
+                    "status_success": "清理完成：{{kind}}。",
+                    "status_failed": "清理失敗：{{kind}}：{{error}}",
+                    "verification_label": "驗證文字",
+                    "verification_help": "請輸入「{{verificationText}}」以啟用執行按鈕。",
+                    "kind_seis_records_full": "波形紀錄",
+                    "kind_seis_records_by_date": "指定日期範圍的波形紀錄",
+                    "kind_miniseed_full": "MiniSEED 檔案",
+                    "kind_miniseed_by_date": "指定日期範圍的 MiniSEED 檔案",
+                    "kind_helicorder_full": "Helicorder 檔案",
+                    "kind_helicorder_by_date": "指定日期範圍的 Helicorder 檔案",
+                    "kind_unknown": "清理任務",
+                    "start_date": "起始日期",
+                    "end_date": "截止日期",
+                    "mode_label": "清理方式",
+                    "mode_all": "全部",
+                    "mode_range": "日期範圍"
                 }
             },
             "Metadata": {
@@ -421,6 +509,34 @@
                     "user_agent": "使用者代理",
                     "updated_at": "更新於",
                     "actions": "操作"
+                }
+            },
+            "Backup": {
+                "title": "備份管理",
+                "select_mode": {
+                    "backup": "建立備份",
+                    "restore": "還原備份"
+                },
+                "backup_config": {
+                    "title": "建立備份",
+                    "description": "這將匯出您的設定資料為 JSON 檔案。您可以將此檔案保存起來，並在日後（例如系統遷移時）用於還原設定。",
+                    "submit_button": "生成備份",
+                    "generating": "正在生成備份資料...",
+                    "success": "備份資料已成功生成。",
+                    "error": "生成備份資料失敗：{{error}}"
+                },
+                "restore_config": {
+                    "title": "選擇備份檔案",
+                    "description": "選擇一個 JSON 備份檔案以還原設定。AnyShake Observer 將會覆寫您目前的設定。",
+                    "submit_button": "還原設定",
+                    "no_file_selected": "尚未選擇檔案。",
+                    "confirm_title": "確認還原",
+                    "confirm_message": "確定要還原設定嗎？此操作將覆寫您目前的設定。",
+                    "confirm_button": "還原",
+                    "cancel_button": "取消",
+                    "restoring": "正在還原設定...",
+                    "success": "設定已成功還原。",
+                    "error": "還原設定失敗：{{error}}"
                 }
             }
         }

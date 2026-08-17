@@ -1,4 +1,18 @@
 {
+    "config": {
+        "global": {
+            "name": "AnyShake Observer",
+            "footer": "Listen to the whispering earth."
+        },
+        "router": {
+            "home": "Station Status",
+            "realtime": "Real-time Waveform",
+            "history": "History Waveform",
+            "download": "Data Download",
+            "settings": "System Settings",
+            "default": "Page Not Found"
+        }
+    },
     "components": {
         "ErrorPage": {
             "something_went_wrong": "Oops! Something went wrong.",
@@ -8,7 +22,23 @@
             "yes": "Yes",
             "no": "No",
             "add_new_item": "Input new item.",
-            "editing_list": "Editing List of {{fieldName}}"
+            "editing_list": "Editing List of {{fieldName}}",
+            "table_value": "Value",
+            "table_actions": "Actions"
+        },
+        "Spectrogram": {
+            "settings": {
+                "title": "Spectrogram Settings",
+                "min_db": "Min dB",
+                "max_db": "Max dB"
+            }
+        },
+        "DequeSpectrogram": {
+            "settings": {
+                "title": "Spectrogram Settings",
+                "min_db": "Min dB",
+                "max_db": "Max dB"
+            }
         }
     },
     "views": {
@@ -56,8 +86,8 @@
             "event_list_modal": {
                 "title": "Select a Seismic Event",
                 "earthquake_at": "Earthquake at {{time}}",
-                "p_wave_arrival": "P-Wave Arrival {{time}} seconds",
-                "s_wave_arrival": "S-Wave Arrival {{time}} seconds",
+                "p_wave_arrival": "P-Wave Arrival {{time}} ({{seconds}} sec)",
+                "s_wave_arrival": "S-Wave Arrival {{time}} ({{seconds}} sec)",
                 "epicenter_distance": "Epicenter {{distance}} km",
                 "earthquake_depth": "Depth {{depth}} km",
                 "selected_an_event": "Selected an earthquake event in {{region}} at {{time}}."
@@ -92,6 +122,10 @@
                 "confirm_title": "Confirm Reset",
                 "confirm_button": "Reset",
                 "cancel_button": "Cancel"
+            },
+            "display_mode": {
+                "waveform_mode": "Waveform Mode",
+                "spectrogram_mode": "Spectrogram Mode"
             },
             "share_link": {
                 "share_button": "Share Link",
@@ -141,6 +175,11 @@
             "station_location": {
                 "title": "Station Location"
             },
+            "upgrade": {
+                "update_available": "A new version {{latest}} is available. You can enable automatic updates or download and install it manually.",
+                "restart_needed": "The latest version {{latest}} has been installed, but {{current}} is still running. Please restart the software at a convenient time to apply the update.",
+                "manual_upgrade_needed": "A new version {{latest}} is available, but the current version {{current}} is below the minimum compatible version {{required}}. Manual upgrade is required."
+            },
             "service_status": {
                 "title": "Service Status"
             },
@@ -160,6 +199,10 @@
             "go_back_button": "Go Back"
         },
         "RealTime": {
+            "display_mode": {
+                "waveform_mode": "Waveform Mode",
+                "spectrogram_mode": "Spectrogram Mode"
+            },
             "reset_layout": {
                 "reset_button": "Reset All",
                 "confirm_message": "Are you sure you want to reset the layout?",
@@ -170,6 +213,13 @@
             "layout_locker": {
                 "lock_button": "Lock Layout",
                 "unlock_button": "Unlock Layout"
+            },
+            "record_data": {
+                "start_button": "Start Recording",
+                "stop_button": "Stop Recording",
+                "start_recording": "Recording has started at {{startedAt}}.",
+                "link_created": "Recording stopped at {{endedAt}} ({{duration}} seconds). A link has been generated.",
+                "no_data_recorded": "No data was recorded during this period."
             },
             "connectivity": {
                 "connecting": "No connection, connecting now...",
@@ -187,6 +237,18 @@
             },
             "Dangerous": {
                 "title": "Dangerous Zone",
+                "restart_application": {
+                    "title": "Restart Entire Application",
+                    "description": "This will restart the entire application, it may take a short while to complete and will temporarily close all active connections, causing interruption to services and recording.",
+                    "submit_button": "Restart Application",
+                    "confirm_title": "Confirm Restart",
+                    "confirm_message": "Are you sure you want to restart the application?",
+                    "confirm_button": "Restart",
+                    "cancel_button": "Cancel",
+                    "restarting": "Sending application restart request...",
+                    "success": "Restarting request sent, application will restart in a few seconds.",
+                    "error": "Failed to request application restart: {{error}}"
+                },
                 "purge_waveform_records": {
                     "title": "Purge Waveform Records",
                     "description": "This will delete all waveform records in the database, operation is irreversible.",
@@ -246,6 +308,32 @@
                     "resetting": "Resetting service configuration...",
                     "success": "Successfully reset service configuration.",
                     "error": "Failed to reset service configuration: {{error}}"
+                },
+                "purge_data": {
+                    "mode_running": "Running",
+                    "invalid_range": "Please select a valid start and end date.",
+                    "started": "Purge task started.",
+                    "request_failed": "Failed to start purge task: {{error}}",
+                    "running_hint": "Another purge operation cannot be started until the current one completes.",
+                    "status_query_failed": "Failed to fetch purge status: {{error}}",
+                    "status_idle": "No purge task is currently running.",
+                    "status_running": "Purging: {{kind}}.",
+                    "status_success": "Purge completed: {{kind}}.",
+                    "status_failed": "Purge failed: {{kind}}: {{error}}",
+                    "verification_label": "Verification text",
+                    "verification_help": "Please enter \"{{verificationText}}\" to enable the run button.",
+                    "kind_seis_records_full": "Waveform records",
+                    "kind_seis_records_by_date": "Waveform records in the specified date range",
+                    "kind_miniseed_full": "MiniSEED files",
+                    "kind_miniseed_by_date": "MiniSEED files in the specified date range",
+                    "kind_helicorder_full": "Helicorder files",
+                    "kind_helicorder_by_date": "Helicorder files in the specified date range",
+                    "kind_unknown": "Purge task",
+                    "start_date": "Start date",
+                    "end_date": "End date",
+                    "mode_label": "Purge mode",
+                    "mode_all": "All",
+                    "mode_range": "Date range"
                 }
             },
             "Metadata": {
@@ -422,6 +510,34 @@
                     "updated_at": "Updated At",
                     "actions": "Actions"
                 }
+            },
+            "Backup": {
+                "title": "Backup Management",
+                "select_mode": {
+                    "backup": "Create Backup",
+                    "restore": "Restore Backup"
+                },
+                "backup_config": {
+                    "title": "Create a Backup",
+                    "description": "This will export your configuration data as a JSON file. You can save this file and later use it to restore your setup, for example when migrating to a new system.",
+                    "submit_button": "Generate Backup",
+                    "generating": "Generating backup data...",
+                    "success": "Backup data has been generated successfully.",
+                    "error": "Failed to generate backup data: {{error}}"
+                },
+                "restore_config": {
+                    "title": "Select a Backup File",
+                    "description": "Choose a JSON backup file to restore your configuration. AnyShake Observer will overwrite your current settings with the data from the selected file.",
+                    "submit_button": "Restore Configuration",
+                    "no_file_selected": "No file selected.",
+                    "confirm_title": "Confirm Restore",
+                    "confirm_message": "Are you sure you want to restore the configuration? This action will overwrite your current settings.",
+                    "confirm_button": "Restore",
+                    "cancel_button": "Cancel",
+                    "restoring": "Restoring configuration...",
+                    "success": "Configuration has been restored successfully.",
+                    "error": "Failed to restore configuration: {{error}}"
+                }
             }
         }
     },
@@ -439,10 +555,6 @@
             "confirm_title": "Logout",
             "confirm_button": "OK",
             "cancel_button": "Cancel"
-        },
-        "newsletter": {
-            "title": "Newsletter",
-            "submit_button": "Subscribe"
         }
     },
     "Login": {
@@ -470,5 +582,4 @@
             "error": "Login failed."
         }
     }
-
 }

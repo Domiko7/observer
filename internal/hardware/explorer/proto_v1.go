@@ -7,28 +7,37 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"path/filepath"
 	"time"
 	"unsafe"
 
-	"github.com/anyshake/observer/internal/hardware/explorer/metadata"
 	"github.com/anyshake/observer/pkg/fifo"
+	"github.com/anyshake/observer/pkg/logger"
 	"github.com/anyshake/observer/pkg/message"
+	"github.com/anyshake/observer/pkg/metadata"
 	"github.com/anyshake/observer/pkg/ntpclient"
+	"github.com/anyshake/observer/pkg/ringbuf"
 	"github.com/anyshake/observer/pkg/timesource"
 	"github.com/anyshake/observer/pkg/transport"
-	"github.com/sirupsen/logrus"
 )
 
 type ExplorerProtoImplV1 struct {
 	ChannelCodes    []string
 	ExplorerOptions ExplorerOptions
 	NtpOptions      NtpOptions
-	Logger          *logrus.Entry
+	Logger          *logger.Adapter
 	TimeSource      *timesource.Source
 
 	Transport  transport.ITransport
-	fifoBuffer fifo.Buffer[byte]
+	fifoBuffer *fifo.Buffer[byte]
+
+	// buf length: 100; ppm window: 60 min
+	clockDriftBuf *ringbuf.Buffer[clockDrift]
+
+	// 1 message per second, for archiving service, etc.
 	messageBus message.Bus[EventHandler]
+	// 1 message per packet, for realtime purposes
+	messageBusRealtime message.Bus[EventHandler]
 
 	deviceStatus   DeviceStatus
 	deviceConfig   DeviceConfig
@@ -45,19 +54,16 @@ func (g *ExplorerProtoImplV1) getPacketSize(headerSize, channelSize int) int {
 		1 // padding
 }
 
-func (g *ExplorerProtoImplV1) fixSampleRate(currentSampleRate int) int {
-	targetSampleRates := []int{
-		5, 10, 25, 50, 75, 100,
-		125, 150, 175, 200, 225,
-		250, 275, 300, 325, 350,
-		375, 400, 425, 450, 475,
-		500, 525, 550, 575, 600,
-		625, 650, 675, 700, 725,
-		750, 775, 800, 825, 850,
-		875, 900, 925, 950, 975,
-		1000,
+func (g *ExplorerProtoImplV1) fixSampleRate(channelSize int64, duration time.Duration) (int, error) {
+	if duration.Milliseconds() == 0 {
+		return 0, errors.New("invalid duration")
 	}
 
+	currentSampleRate := int(1000 / duration.Milliseconds() * channelSize)
+	currentSampleRate = int(math.Round(float64(currentSampleRate)/5.0) * 5.0)
+
+	// All divisors of 5000 greater than or equal to 5
+	targetSampleRates := []int{50, 100, 125, 200, 250, 500, 1000, 1250, 2500, 5000}
 	closest := targetSampleRates[0]
 	minDiff := math.Abs(float64(currentSampleRate - closest))
 
@@ -69,7 +75,7 @@ func (g *ExplorerProtoImplV1) fixSampleRate(currentSampleRate int) int {
 		}
 	}
 
-	return closest
+	return closest, nil
 }
 
 func (g *ExplorerProtoImplV1) getIndices(arr []byte, sep []byte) []int {
@@ -86,7 +92,7 @@ func (g *ExplorerProtoImplV1) getIndices(arr []byte, sep []byte) []int {
 	return indices
 }
 
-func (g *ExplorerProtoImplV1) getChannelData(packetBytes []byte, headerSize, channelSize int) error {
+func (g *ExplorerProtoImplV1) getChannelData(packetBytes []byte, headerSize, channelSize int) (channelData []ChannelData, err error) {
 	zOffset := headerSize + int(unsafe.Sizeof(int64(0)))
 	zAxisData := make([]int32, channelSize)
 	eOffset := zOffset + channelSize*int(unsafe.Sizeof(int32(0)))
@@ -107,21 +113,18 @@ func (g *ExplorerProtoImplV1) getChannelData(packetBytes []byte, headerSize, cha
 	}
 	for i := 0; i < len(calcChecksum); i++ {
 		if calcChecksum[i] != recvChecksum[i] {
-			return fmt.Errorf("checksum mismatch, expected %v, got %v", recvChecksum, calcChecksum)
+			return nil, fmt.Errorf("checksum mismatch, expected %v, got %v", recvChecksum, calcChecksum)
 		}
 	}
 
-	err := binary.Read(bytes.NewReader(packetBytes[zOffset:eOffset]), binary.LittleEndian, &zAxisData)
-	if err != nil {
-		return fmt.Errorf("failed to read z-axis data: %w", err)
+	if err = binary.Read(bytes.NewReader(packetBytes[zOffset:eOffset]), binary.LittleEndian, &zAxisData); err != nil {
+		return nil, fmt.Errorf("failed to read z-axis data: %w", err)
 	}
-	err = binary.Read(bytes.NewReader(packetBytes[eOffset:nOffset]), binary.LittleEndian, &eAxisData)
-	if err != nil {
-		return fmt.Errorf("failed to read e-axis data: %w", err)
+	if err = binary.Read(bytes.NewReader(packetBytes[eOffset:nOffset]), binary.LittleEndian, &eAxisData); err != nil {
+		return nil, fmt.Errorf("failed to read e-axis data: %w", err)
 	}
-	err = binary.Read(bytes.NewReader(packetBytes[nOffset:len(packetBytes)-1-3]), binary.LittleEndian, &nAxisData)
-	if err != nil {
-		return fmt.Errorf("failed to read n-axis data: %w", err)
+	if err = binary.Read(bytes.NewReader(packetBytes[nOffset:len(packetBytes)-1-3]), binary.LittleEndian, &nAxisData); err != nil {
+		return nil, fmt.Errorf("failed to read n-axis data: %w", err)
 	}
 
 	if len(g.channelDataBuf) != 3 {
@@ -154,7 +157,29 @@ func (g *ExplorerProtoImplV1) getChannelData(packetBytes []byte, headerSize, cha
 	}
 	g.deviceConfig.SetChannelCodes(currentChannelCodes)
 
-	return nil
+	result := make([]ChannelData, 3)
+	result[0] = ChannelData{
+		ChannelCode: g.channelDataBuf[0].ChannelCode,
+		ChannelId:   1,
+		ByteSize:    4,
+		DataType:    "int32",
+		Data:        zAxisData,
+	}
+	result[1] = ChannelData{
+		ChannelCode: g.channelDataBuf[1].ChannelCode,
+		ChannelId:   2,
+		ByteSize:    4,
+		DataType:    "int32",
+		Data:        eAxisData,
+	}
+	result[2] = ChannelData{
+		ChannelCode: g.channelDataBuf[2].ChannelCode,
+		ChannelId:   3,
+		ByteSize:    4,
+		DataType:    "int32",
+		Data:        nAxisData,
+	}
+	return result, nil
 }
 
 func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, context.CancelFunc, error) {
@@ -168,7 +193,7 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 	if err := g.Transport.Open(); err != nil {
 		return nil, nil, fmt.Errorf("failed to open transport: %w", err)
 	}
-	ntpClient, err := ntpclient.New(g.NtpOptions.Pool, g.NtpOptions.Retry, g.NtpOptions.ReadTimeout)
+	ntpClient, err := ntpclient.New(g.NtpOptions.Pool, g.NtpOptions.Retry, g.NtpOptions.ReadTimeout, timesource.MonotonicNow)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create ntp client: %w", err)
 	}
@@ -179,9 +204,9 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 		return nil, nil, fmt.Errorf("failed to acquire time from NTP server: %w", err)
 	}
 
-	currentTime := time.Now()
-	g.TimeSource.Update(currentTime, currentTime.Add(offset))
-	g.Logger.Infof("time synchronized with NTP server, local time offset: %d ms", offset.Milliseconds())
+	currentMonotonicTime := timesource.MonotonicNow()
+	g.TimeSource.Update(currentMonotonicTime, currentMonotonicTime.Add(offset), 0, timesource.MonotonicNow)
+	g.Logger.Infof("time synchronized with NTP server, local monotonic time offset: %d ms", offset.Milliseconds())
 	if err = g.Flush(); err != nil {
 		return nil, nil, fmt.Errorf("failed to flush transport: %w", err)
 	}
@@ -196,7 +221,9 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 	DATA_PACKET_HEADER := []byte{0xFC, 0x1B}
 	packetSize := g.getPacketSize(len(DATA_PACKET_HEADER), DATA_PACKET_CHANNEL_SIZE)
 	g.fifoBuffer = fifo.New[byte](10 * packetSize)
+	g.clockDriftBuf = ringbuf.New[clockDrift](100)
 	g.messageBus = message.NewBus[EventHandler](EXPLORER_STREAM_TOPIC, 1024)
+	g.messageBusRealtime = message.NewBus[EventHandler](EXPLORER_REALTIME_STREAM_TOPIC, 1024)
 	g.deviceConfig.SetGnssAvailability(false)
 
 	dummyDeviceId := uint32(0x12F81AC)
@@ -207,7 +234,7 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 	g.deviceStatus.SetStartedAt(g.TimeSource.Now())
 	g.deviceStatus.SetUpdatedAt(time.Unix(0, 0))
 	g.deviceConfig.SetProtocol(g.ExplorerOptions.Protocol)
-	g.deviceConfig.SetModel(g.ExplorerOptions.Model)
+	g.deviceConfig.SetModel(filepath.Base(g.ExplorerOptions.Model))
 
 	go func() {
 		recvBuf := make([]byte, packetSize)
@@ -219,7 +246,7 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 		for {
 			select {
 			case <-subCtx.Done():
-				g.Logger.Info("exiting from data packet reader")
+				g.Logger.Infoln("exiting from data packet reader")
 				return
 			default:
 			}
@@ -231,10 +258,20 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 				g.Logger.Errorf("failed to read data from transport: %v", err)
 				cancelFn()
 			}
-			totalLatency := recvEndTime.Sub(recvStartTime) + g.Transport.GetLatency(len(recvBuf))
+			elapsed := recvEndTime.Sub(recvStartTime)
+			latency := g.Transport.GetLatency(len(recvBuf))
+
+			// Calculate proper sample rate to avoid jitter
+			currentSampleRate, err := g.fixSampleRate(DATA_PACKET_CHANNEL_SIZE, elapsed)
+			if err != nil {
+				g.Logger.Errorf("failed to determine current sample rate: %v", err)
+				continue
+			}
+			g.deviceConfig.SetSampleRate(currentSampleRate)
+			g.deviceConfig.SetPacketInterval(time.Duration(1000/currentSampleRate*DATA_PACKET_CHANNEL_SIZE) * time.Millisecond)
 
 			// Record the current time of the packet
-			currentTime := g.TimeSource.Now().UnixMilli() - totalLatency.Milliseconds()
+			currentTime := g.TimeSource.Now().UnixMilli() - (elapsed + latency).Milliseconds()
 			binary.BigEndian.PutUint64(timeBytes, uint64(currentTime))
 
 			// Find possible header in the buffer to insert current time next to the header
@@ -268,7 +305,6 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 
 	go func(decodeInterval time.Duration) {
 		var (
-			expectedNextTimestamp int64
 			collectedTimestampArr []int64
 		)
 		for timer := time.NewTimer(decodeInterval); ; {
@@ -276,56 +312,42 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 
 			select {
 			case <-timer.C:
-				dataPacket, err := g.fifoBuffer.Peek(DATA_PACKET_HEADER, packetSize+8)
+				dataPacket, err := g.fifoBuffer.Peek(DATA_PACKET_HEADER, packetSize+8) // extra 8 bytes for inserting timestamp
 				if err != nil {
 					continue
 				}
 
-				timestamp := int64(binary.BigEndian.Uint64(dataPacket[2:10]))
-				if expectedNextTimestamp == 0 {
-					expectedNextTimestamp = timestamp
-				} else {
-					err = g.getChannelData(dataPacket, len(DATA_PACKET_HEADER), DATA_PACKET_CHANNEL_SIZE)
+				currentSampleRate := g.deviceConfig.GetSampleRate()
+				if currentSampleRate > 0 {
+					timestamp := int64(binary.BigEndian.Uint64(dataPacket[2:10]))
+					channelData, err := g.getChannelData(dataPacket, len(DATA_PACKET_HEADER), DATA_PACKET_CHANNEL_SIZE)
 					if err != nil {
 						g.Logger.Errorf("failed to get channel data: %v", err)
 						g.deviceStatus.IncrementErrors()
 						continue
 					}
+
 					collectedTimestampArr = append(collectedTimestampArr, timestamp)
-				}
+					g.deviceStatus.IncrementFrames()
 
-				// Calculate proper sample rate to avoid jitter
-				currentSampleRate := len(collectedTimestampArr) * DATA_PACKET_CHANNEL_SIZE
-				targetSampleRate := g.fixSampleRate(currentSampleRate)
-
-				if math.Abs(float64(timestamp-expectedNextTimestamp)) <= ALLOWED_JITTER_MS_NTP && currentSampleRate == targetSampleRate {
-					// Update the next tick even if the buffer is empty
-					expectedNextTimestamp = timestamp + time.Second.Milliseconds()
-					if len(collectedTimestampArr) == 0 {
-						continue
+					g.messageBusRealtime.Publish(time.UnixMilli(timestamp), &g.deviceConfig, &g.deviceVariable, channelData)
+					if len(collectedTimestampArr)*DATA_PACKET_CHANNEL_SIZE == currentSampleRate {
+						packetTimestamp := collectedTimestampArr[0]
+						g.messageBus.Publish(time.UnixMilli(packetTimestamp), &g.deviceConfig, &g.deviceVariable, g.channelDataBuf)
+						g.deviceStatus.IncrementMessages()
+						collectedTimestampArr = []int64{}
+						g.channelDataBuf = []ChannelData{}
+					} else if len(collectedTimestampArr)*DATA_PACKET_CHANNEL_SIZE > currentSampleRate {
+						g.Logger.Warnf("packet timestamp is not in sync with current sample rate, packet timestamp: %v, current sample rate: %v", collectedTimestampArr[0], currentSampleRate)
+						collectedTimestampArr = []int64{}
+						g.channelDataBuf = []ChannelData{}
+						g.deviceStatus.IncrementErrors()
 					}
 
-					g.deviceConfig.SetSampleRate(targetSampleRate)
-					g.deviceConfig.SetPacketInterval(time.Duration((1000/targetSampleRate)*DATA_PACKET_CHANNEL_SIZE) * time.Millisecond)
-					packetTimestamp := collectedTimestampArr[0]
-					g.messageBus.Publish(time.UnixMilli(packetTimestamp), &g.deviceConfig, &g.deviceVariable, g.channelDataBuf)
-					g.deviceStatus.IncrementMessages()
-
-					collectedTimestampArr = []int64{}
-					g.channelDataBuf = []ChannelData{}
-				} else if timestamp-expectedNextTimestamp > ALLOWED_JITTER_MS_NTP {
-					g.Logger.Warnf("jitter detected, discarding this packet, expected %v, got %v", expectedNextTimestamp, timestamp)
-					g.deviceStatus.IncrementErrors()
-					// Update the next tick, clear the buffer if the jitter exceeds the threshold
-					expectedNextTimestamp = timestamp + time.Second.Milliseconds()
-					collectedTimestampArr = []int64{}
-					g.channelDataBuf = []ChannelData{}
+					g.deviceStatus.SetUpdatedAt(time.UnixMilli(timestamp))
 				}
-
-				g.deviceStatus.IncrementFrames()
-				g.deviceStatus.SetUpdatedAt(time.UnixMilli(timestamp))
 			case <-subCtx.Done():
-				g.Logger.Info("exiting from data packet decoder")
+				g.Logger.Infoln("exiting from data packet decoder")
 				timer.Stop()
 				return
 			}
@@ -336,19 +358,19 @@ func (g *ExplorerProtoImplV1) Open(ctx context.Context) (context.Context, contex
 		for timer := time.NewTimer(resyncInterval); ; {
 			select {
 			case <-timer.C:
-				timer.Reset(resyncInterval)
-
-				g.Logger.Info("re-synchronizing time with NTP servers")
-				offset, err := ntpClient.QueryAverage(NTP_MEASUREMENT_ATTEMPTS)
+				g.Logger.Infoln("re-synchronizing time with NTP servers")
+				offset, server, err := ntpClient.Query()
 				if err != nil {
 					g.Logger.Warnf("error occurred while re-synchronizing time with NTP: %v", err)
+					timer.Reset(resyncInterval)
 					continue
 				}
-
-				currentTime := time.Now()
-				g.TimeSource.Update(currentTime, currentTime.Add(offset))
-
-				g.Logger.Infof("time synchronized with NTP server, local time offset: %d ms", offset.Milliseconds())
+				timer.Reset(resyncInterval)
+				currentMonotonicTime := timesource.MonotonicNow()
+				g.clockDriftBuf.Push(clockDrift{offset: offset, measuredAt: currentMonotonicTime})
+				ppm := getLongTermClockDriftPPM(g.clockDriftBuf, NTP_PPM_MEASURE_WINDOW)
+				g.TimeSource.Update(currentMonotonicTime, currentMonotonicTime.Add(offset), ppm, nil)
+				g.Logger.Infof("time synchronized with NTP server: %s, local monotonic time offset: %d ms, clock drift PPM: %.2f", server, offset.Milliseconds(), ppm)
 			case <-subCtx.Done():
 				timer.Stop()
 				return
@@ -373,6 +395,14 @@ func (g *ExplorerProtoImplV1) Subscribe(clientId string, handler EventHandler) e
 
 func (g *ExplorerProtoImplV1) Unsubscribe(clientId string) error {
 	return g.messageBus.Unsubscribe(clientId)
+}
+
+func (g *ExplorerProtoImplV1) SubscribeRealtime(clientId string, handler EventHandler) error {
+	return g.messageBusRealtime.Subscribe(clientId, handler)
+}
+
+func (g *ExplorerProtoImplV1) UnsubscribeRealtime(clientId string) error {
+	return g.messageBusRealtime.Unsubscribe(clientId)
 }
 
 func (g *ExplorerProtoImplV1) GetConfig() DeviceConfig {
@@ -435,12 +465,12 @@ func (g *ExplorerProtoImplV1) Flush() error {
 	return g.Transport.Flush()
 }
 
-func (g *ExplorerProtoImplV1) GetMetadata(stationAffiliation, stationDescription, stationCountry, stationPlace, networkCode, stationCode, locationCode string, fuzzyCoordinates bool) (metadata.IMetadata, error) {
+func (g *ExplorerProtoImplV1) GetMetadata(stationAffiliation, stationDescription, stationCountry, stationPlace, networkCode, stationCode, locationCode string, fuzzyCoordinates bool) (*metadata.Render, error) {
 	latitude, longitude, elevation, err := g.GetCoordinates(fuzzyCoordinates)
 	if err != nil {
 		return nil, err
 	}
-	return metadata.New(g.deviceConfig.GetModel(), metadata.Options{
+	return metadata.New(g.ExplorerOptions.Model, metadata.Options{
 		ChannelCodes:       g.deviceConfig.GetChannelCodes(),
 		StartTime:          g.deviceStatus.GetStartedAt(),
 		SampleRate:         g.deviceConfig.GetSampleRate(),

@@ -23,7 +23,7 @@ func (s *ntpServerConfigEnabledImpl) GetDescription() string {
 }
 func (s *ntpServerConfigEnabledImpl) Init(handler *action.Handler) error {
 	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to set default NTP server service availablity: %w", err)
+		return fmt.Errorf("failed to set default NTP server service availability: %w", err)
 	}
 	return nil
 }
@@ -33,14 +33,14 @@ func (s *ntpServerConfigEnabledImpl) Set(handler *action.Handler, newVal any) er
 		return err
 	}
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), enabled); err != nil {
-		return fmt.Errorf("failed to set NTP server service availablity: %w", err)
+		return fmt.Errorf("failed to set NTP server service availability: %w", err)
 	}
 	return nil
 }
 func (s *ntpServerConfigEnabledImpl) Get(handler *action.Handler) (any, error) {
 	val, _, _, err := handler.SettingsGet(s.GetNamespace(), s.GetKey())
 	if err != nil {
-		return nil, fmt.Errorf("failed to get NTP server service availablity: %w", err)
+		return nil, fmt.Errorf("failed to get NTP server service availability: %w", err)
 	}
 	enabled, ok := val.(bool)
 	if !ok {
@@ -50,7 +50,7 @@ func (s *ntpServerConfigEnabledImpl) Get(handler *action.Handler) (any, error) {
 }
 func (s *ntpServerConfigEnabledImpl) Restore(handler *action.Handler) error {
 	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
-		return fmt.Errorf("failed to reset NTP server service availablity: %w", err)
+		return fmt.Errorf("failed to reset NTP server service availability: %w", err)
 	}
 	return nil
 }
@@ -152,10 +152,61 @@ func (s *ntpServerConfigListenPortImpl) Restore(handler *action.Handler) error {
 	return nil
 }
 
+type ntpServerConfigDelayControlImpl struct{}
+
+func (s *ntpServerConfigDelayControlImpl) GetName() string             { return "Delay Control" }
+func (s *ntpServerConfigDelayControlImpl) GetNamespace() string        { return ID }
+func (s *ntpServerConfigDelayControlImpl) GetKey() string              { return "delay_control" }
+func (s *ntpServerConfigDelayControlImpl) GetType() action.SettingType { return action.Int }
+func (s *ntpServerConfigDelayControlImpl) IsRequired() bool            { return true }
+func (s *ntpServerConfigDelayControlImpl) GetVersion() int             { return 0 }
+func (s *ntpServerConfigDelayControlImpl) GetOptions() map[string]any  { return nil }
+func (s *ntpServerConfigDelayControlImpl) GetDefaultValue() any        { return 0 }
+func (s *ntpServerConfigDelayControlImpl) GetDescription() string {
+	return "Some USB serial ports add noticeable latency, causing a fixed offset in the NTP time result. This offset can be compensated by adding a fixed delay in microseconds (µs)."
+}
+func (s *ntpServerConfigDelayControlImpl) Init(handler *action.Handler) error {
+	if _, err := handler.SettingsInit(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
+		return fmt.Errorf("failed to set default delay control value: %w", err)
+	}
+	return nil
+}
+func (s *ntpServerConfigDelayControlImpl) Set(handler *action.Handler, newVal any) error {
+	delay, err := config.GetConfigValInt64(newVal)
+	if err != nil {
+		return err
+	}
+	if delay < -1000000 || delay > 1000000 {
+		return errors.New("delay must be between -1000000 and 1000000")
+	}
+	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), delay); err != nil {
+		return fmt.Errorf("failed to set delay control value: %w", err)
+	}
+	return nil
+}
+func (s *ntpServerConfigDelayControlImpl) Get(handler *action.Handler) (any, error) {
+	val, _, _, err := handler.SettingsGet(s.GetNamespace(), s.GetKey())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get delay control value: %w", err)
+	}
+	delay, ok := val.(int64)
+	if !ok {
+		return nil, errors.New("integer expected")
+	}
+	return delay, nil
+}
+func (s *ntpServerConfigDelayControlImpl) Restore(handler *action.Handler) error {
+	if err := handler.SettingsSet(s.GetNamespace(), s.GetKey(), s.GetType(), s.GetVersion(), s.GetDefaultValue()); err != nil {
+		return fmt.Errorf("failed to reset delay control value: %w", err)
+	}
+	return nil
+}
+
 func (s *NtpServerServiceImpl) GetConfigConstraint() []config.IConstraint {
 	return []config.IConstraint{
 		&ntpServerConfigEnabledImpl{},
 		&ntpServerConfigListenHostImpl{},
 		&ntpServerConfigListenPortImpl{},
+		&ntpServerConfigDelayControlImpl{},
 	}
 }

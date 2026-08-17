@@ -113,6 +113,30 @@ type sysUser {
   updatedAt: Int64!
 }
 
+type upgradeStatus {
+  required: String!
+  current: String!
+  latest: String!
+  eligible: Boolean!
+  applied: Boolean!
+}
+
+enum jobStatus {
+  IDLE
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+type purgeDataJob {
+  id: String!
+  kind: String!
+  status: jobStatus!
+  startedAt: Int64
+  finishedAt: Int64
+  error: String
+}
+
 type Mutation {
   # user management - admin only
   createSysUser(username: String!, password: String!, admin: Boolean!): String!
@@ -125,13 +149,18 @@ type Mutation {
   ): Boolean!
 
   # data management - admin only
-  purgeSeisRecords: Boolean!
-  purgeMiniSeedFiles: Boolean!
-  purgeHelicorderFiles: Boolean!
+  purgeSeisRecords: purgeDataJob!
+  purgeSeisRecordsByDate(startDate: Int64!, endDate: Int64!): purgeDataJob!
+  purgeMiniSeedFiles: purgeDataJob!
+  purgeMiniSeedFilesByDate(startDate: Int64!, endDate: Int64!): purgeDataJob!
+  purgeHelicorderFiles: purgeDataJob!
+  purgeHelicorderFilesByDate(startDate: Int64!, endDate: Int64!): purgeDataJob!
 
   # station management - admin only
   updateStationConfig(key: String!, value: Any!): Boolean!
   restoreStationConfig: Boolean!
+  importGlobalConfig(data: String!): Boolean!
+  restartApplication: Boolean!
 
   # service management - admin only
   stopService(serviceId: String!): Boolean!
@@ -142,6 +171,7 @@ type Mutation {
 }
 
 type Query {
+  getSoftwareVersion: String!
   getCurrentTime: Int64!
   getStationConfig: Map!
   getSystemStatus: systemStatus!
@@ -167,4 +197,7 @@ type Query {
   getSysUsers: [sysUser!]! # admin only
   isGenuineProduct: Boolean! # admin only
   getApplicationLogs: [String!] # admin only
+  exportGlobalConfig: String! # admin only
+  getUpgradeStatus: upgradeStatus # admin only
+  getCleanupStatus: purgeDataJob! # admin only
 }

@@ -1,13 +1,14 @@
+import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { ErrorPage } from '../../components/ErrorPage';
+import { ErrorPage } from '../../components/ui/ErrorPage';
 
 const NotFound = () => {
     const { t } = useTranslation();
 
-    const handleGoBack = () => {
+    const handleGoBack = useCallback(() => {
         window.history.back();
-    };
+    }, []);
 
     return (
         <div className="p-8">

@@ -20,8 +20,11 @@ func (s *QuakeSenseServiceImpl) Stop() error {
 		_ = s.hardwareDev.Unsubscribe(ID)
 		if s.mqttClient != nil {
 			s.mqttClient.Disconnect(100)
+			s.mqttClient = nil
 		}
-		s.channelBuffer.Reset()
+		if s.channelBuffer != nil {
+			s.channelBuffer.Reset()
+		}
 		s.wg.Wait()
 		close(done)
 	}()

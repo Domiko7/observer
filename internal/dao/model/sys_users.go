@@ -52,9 +52,9 @@ func (t *SysUser) NewUserId() string {
 	return id.Generate().String()
 }
 
-func (t *SysUser) GetHashedPassword(password string) string {
-	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hashedPassword)
+func (t *SysUser) GetHashedPassword(password string) (string, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hashedPassword), err
 }
 
 func (t *SysUser) IsPasswordCorrect(password string) bool {

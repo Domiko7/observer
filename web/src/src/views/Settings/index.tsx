@@ -1,6 +1,7 @@
 import {
     mdiAccount,
     mdiAlertDecagram,
+    mdiBackupRestore,
     mdiCube,
     mdiHeart,
     mdiHomeEdit,
@@ -10,10 +11,12 @@ import {
 import Icon from '@mdi/react';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 
-import { Skeleton } from '../../components/Skeleton';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { IRouterComponent } from '../../config/router';
 import { useIsCurrentUserAdminQuery } from '../../graphql';
+import { Backup } from './backup';
 import { Dangerous } from './dangerous';
 import { Logs } from './logs';
 import { Metadata } from './metadata';
@@ -24,6 +27,8 @@ import { Users } from './users';
 
 const Settings = ({ currentLocale }: IRouterComponent) => {
     const { t } = useTranslation();
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const tabs = useMemo(() => {
         return {
             inventory: {
@@ -56,6 +61,12 @@ const Settings = ({ currentLocale }: IRouterComponent) => {
                 label: t('views.Settings.Users.title'),
                 element: <Users currentLocale={currentLocale} />
             },
+            backup: {
+                adminOnly: true,
+                icon: mdiBackupRestore,
+                label: t('views.Settings.Backup.title'),
+                element: <Backup />
+            },
             logs: {
                 adminOnly: true,
                 icon: mdiTimelineText,
@@ -66,11 +77,25 @@ const Settings = ({ currentLocale }: IRouterComponent) => {
                 adminOnly: true,
                 icon: mdiAlertDecagram,
                 label: t('views.Settings.Dangerous.title'),
-                element: <Dangerous />
+                element: <Dangerous currentLocale={currentLocale} />
             }
         };
     }, [t, currentLocale]);
-    const [activeTab, setActiveTab] = useState(Object.keys(tabs)[0]);
+    const [activeTab, setActiveTab] = useState(
+        (() => {
+            const tabFromUrl = searchParams.get('tab');
+            const availableTabs = Object.keys(tabs);
+            if (tabFromUrl && availableTabs.includes(tabFromUrl)) {
+                return tabFromUrl;
+            }
+            return availableTabs[0];
+        })()
+    );
+    useEffect(() => {
+        if (activeTab) {
+            setSearchParams({ tab: activeTab });
+        }
+    }, [activeTab, setSearchParams]);
 
     const [isAdmin, setIsAdmin] = useState(false);
     const { data: isCurrentUserAdminData, loading: isCurrentUserAdminLoading } =

@@ -1,8 +1,28 @@
 package main
 
+type ExitReason int
+
+const (
+	ExitInterrupt ExitReason = iota
+	ExitRestart
+	ExitError
+)
+
+const (
+	officialBuildChannel = "github-actions-ci"
+	startupDescription   = "Listen to the whispering earth."
+)
+
 var (
-	buildPlatform  = "self-build"
-	commitHash     = "unknown"
-	binaryVersion  = "custom-version"
-	appDescription = "Listen to the whispering earth."
+	versionMajor      string
+	versionMinor      string
+	versionPatch      string
+	versionPreRelease string
+)
+
+var (
+	buildTimestamp string
+	buildToolchain string
+	buildChannel   string
+	buildCommit    string
 )

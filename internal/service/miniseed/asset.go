@@ -14,6 +14,7 @@ func (s *MiniSeedServiceImpl) safeFileAccess(assetId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	absFilePath = filepath.Clean(absFilePath)
 
 	absAssetIdPath, err := filepath.Abs(assetId)
 	if err != nil {
@@ -21,14 +22,31 @@ func (s *MiniSeedServiceImpl) safeFileAccess(assetId string) (string, error) {
 	}
 	absAssetIdPath = filepath.Clean(absAssetIdPath)
 
-	if !strings.HasPrefix(absAssetIdPath, absFilePath) {
-		return "", fmt.Errorf("asset %s is not available on %s", assetId, ID)
-	}
-	if !strings.HasSuffix(absAssetIdPath, ".mseed") {
+	rel, err := filepath.Rel(absFilePath, absAssetIdPath)
+	if err != nil ||
+		rel == ".." ||
+		strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return "", fmt.Errorf("asset %s is not available on %s", assetId, ID)
 	}
 
-	return absAssetIdPath, nil
+	if !strings.EqualFold(filepath.Ext(absAssetIdPath), ".mseed") {
+		return "", fmt.Errorf("asset %s is not available on %s", assetId, ID)
+	}
+
+	realFilePath, err := filepath.EvalSymlinks(absAssetIdPath)
+	if err != nil {
+		return "", err
+	}
+	realFilePath = filepath.Clean(realFilePath)
+
+	rel, err = filepath.Rel(absFilePath, realFilePath)
+	if err != nil ||
+		rel == ".." ||
+		strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("asset %s is not available on %s", assetId, ID)
+	}
+
+	return realFilePath, nil
 }
 
 func (s *MiniSeedServiceImpl) GetAssetList() ([]service.Asset, error) {

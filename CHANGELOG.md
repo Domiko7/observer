@@ -2,6 +2,225 @@
 
 Starting from v2.2.5, all notable changes to this project will be documented in this file.
 
+## v4.5.2
+
+### Release Notes
+
+This release focuses on **authentication hardening, file access security, and service reliability**. The authentication flow now uses stronger cryptographic safeguards and bounded in-memory state, while waveform asset access validates paths and symlinks more strictly. QuakeSense processing gains broader trigger and filter support with stronger configuration validation, and several startup, timing, and build issues are resolved.
+
+### Improvements
+
+- Hardened authentication and bounded in-memory login state for improved security and reliability.
+- Strengthened waveform asset access validation and file router error handling.
+- Replaced the QuakeSense signal-processing dependency and added support for classic, delayed, and recursive STA/LTA triggers, Z-detection, and IIR filters.
+- Added validation for finite and valid QuakeSense windows, trigger thresholds, frequency ranges, filter types, and sample rates.
+- Improved QuakeSense event timestamp calculation, MQTT option handling, and cleanup after service termination.
+- Made Job Tracker completion timestamps consistent with the configured time source and corrected its logger module name.
+- Updated Go dependencies and the Node.js setup action used by CI and Docker workflows.
+
+### Bug Fixes
+
+- Fixed initialization of missing settings whose configuration version is non-zero.
+- Fixed password hashing error handling during user creation and password updates.
+- Fixed a GraphQL build failure caused by the password hashing API update.
+
+## v4.5.1
+
+### Release Notes
+
+This release delivers **helicorder performance improvements, extended data management controls, and mDNS service discovery enhancements**.
+
+The helicorder service gains a configurable waveform cache backend, allowing operators to choose between disk-based, in-memory, or disabled caching to match their deployment constraints. Data management now exposes a date-range purge operation, complementing the existing full-purge option with a more surgical approach to reclaiming storage. The mDNS discovery service is extended to optionally advertise SeedLink, Winston, and TCP forwarder endpoints, and now continuously monitors their runtime state to keep advertisements in sync with actual service availability.
+
+### New Features
+
+- Added **configurable helicorder cache storage mode**, supporting disk (indexed temporary files), memory, and disabled options.
+- Added **date-range data purge**, allowing seismic waveform records to be deleted by specifying a start and end date.
+- Extended **mDNS discovery** to optionally broadcast SeedLink, Winston Wave Server, and TCP forwarder service endpoints on the local network.
+- mDNS discovery now **periodically scans the runtime state** of advertised services, registering new entries when services come online, updating port advertisements when ports change, and unregistering entries when services go offline.
+
+### Improvements
+
+- Helicorder disk cache uses an indexed binary format, minimizing I/O during span lookups for historical waveform rendering.
+- Spectrogram color map is now **user-selectable** from an extended palette (viridis, inferno, grayscale, jet, hot, cool, spring, summer, autumn, winter, bone).
+- Date-range purge operations run with bounded concurrency across sharded waveform tables to avoid excessive database contention.
+
+## v4.5.0
+
+### Release Notes
+
+This release expands **protocol interoperability, deployment security, and visualization capabilities**, highlighted by a built-in **Winston Wave Server**, embedded **vector map tiles**, and additional **spectrogram color schemes**.
+
+The Winston service allows Earthworm-compatible clients and tools such as Swarm to query waveform data directly from AnyShake Observer. Recent data is served from a configurable in-memory ring buffer for low-latency access, while older requests fall back to archived database records. This release also strengthens WebSocket authentication, improves NTP throughput, and refines earthquake event handling throughout the application.
+
+### New Features
+
+- Added a built-in **Winston Wave Server protocol** service for compatibility with Earthworm-based clients and seismic analysis tools such as Swarm.
+- Added a configurable **Winston waveform ring buffer**, retaining 10 minutes of recent data by default for fast short-period queries and falling back to archived database records when needed.
+- Replaced raster map assets with embedded **vector map tiles**, improving map rendering flexibility and reducing frontend asset overhead.
+- Added more **spectrogram color map schemes** for both real-time and historical waveform views.
+- Added display of actual estimated **P-wave and S-wave arrival times** in earthquake event details.
+- Added **settings tab persistence**, restoring the previously selected tab when returning to the settings page.
+- Added county-level descriptions for supported Taiwan earthquake events instead of displaying raw coordinates.
+- Added additional **systemd security hardening** and filesystem isolation options to the bundled service unit.
+
+### Improvements
+
+- Improved **NTP server throughput** with larger UDP buffers, bounded packet queues, and concurrent request workers.
+- Migrated the logging backend to **zerolog** for more consistent and efficient structured logging.
+- Moved WebSocket credentials out of URL query parameters and into the **WebSocket subprotocol header**, reducing accidental token exposure.
+- Improved earthquake event caching with typed caches and synchronized refresh behavior to prevent duplicate upstream requests under load.
+- Updated the **Sichuan Earthquake Administration** data source to use the Wolfx API.
+- Improved historical event lookup by storing event results as keyed objects and refining event selection behavior.
+- Refined spectrogram interactions, modal layouts, and frontend event handling for better usability.
+
+### Bug Fixes
+
+- Fixed WebSocket connection failures in **Google Chrome** caused by authentication subprotocol handling.
+- Fixed cache stampedes during concurrent seismic event queries.
+- Fixed **CENC earthquake data source** parsing and availability issues.
+- Fixed helicorder channel selection when channel order differs from the global station configuration.
+- Fixed incorrect channel-code index matching in plot data processing.
+- Fixed settings pages initializing with the wrong active tab.
+- Fixed several earthquake event list and modal data consistency issues.
+
+## v4.4.0
+
+### Release Notes
+
+This release focuses on **LAN accessibility and deployment security**, introducing **mDNS-based local network discovery** and a stronger authentication pipeline.
+
+With built-in **mDNS discovery**, AnyShake Observer can now be found more easily on the same local network without manual IP lookup, improving setup convenience in home and lab environments. In parallel, authentication and runtime hardening updates improve reliability across both plain HTTP and constrained deployment scenarios.
+
+### New Features
+
+- Added **mDNS local network discovery**, allowing clients on the same LAN to discover AnyShake Observer instances automatically.
+- Added **Proof-of-Work (PoW) validation** in authentication flow to improve resistance against abusive login traffic.
+- Implemented **AES-GCM + RSA hybrid login** support over plain HTTP environments.
+- Added support for running the Observer service as **`nobody`** for reduced privilege operation.
+- Added **spectrogram zoom in/out** support in the web frontend.
+- Introduced **`schema_version`** table for future database migration compatibility.
+
+### Improvements
+
+- Improved frontend localization consistency by merging and refining translation resources.
+- Cached user status data to reduce repeated computation and improve response performance.
+- Reduced hard-coded keys in code paths to improve maintainability.
+- Refined active menu item styles for better UI consistency.
+
+### Bug Fixes
+
+- Fixed login failures in specific **plain HTTP** deployment environments.
+- Fixed CI build failure in release pipeline.
+- Fixed database migration behavior by using the explicitly specified table name.
+
+## v4.3.4
+
+### Release Notes
+
+This release focuses on **MQTT connectivity robustness and operational convenience**, introducing **configurable MQTT Client ID support** and **in-app restart capability**.
+
+By allowing explicit control over the **MQTT Client ID**, AnyShake Observer can now avoid client collisions and better integrate with managed brokers and shared infrastructures. In addition, the new **in-app restart mechanism** improves maintainability by enabling controlled restarts without external process management.
+
+### New Features
+
+- Added support for **configurable MQTT Client ID**, allowing users to explicitly define the client identifier used when connecting to the MQTT broker.
+- Added support for **in-app restart**, enabling the service to restart itself without external supervisors or manual intervention.
+
+## v4.3.3
+
+### Release Notes
+
+This is a **minor performance and stability release** focused on **UI responsiveness** and **upgrade robustness**.
+
+The main highlight is **spectrogram rendering optimization**, significantly improving smoothness and reducing frame drops during real-time visualization. In addition, several **upgrade and startup edge cases** have been tightened to avoid misleading states and permission-related failures.
+
+### Improvements
+
+- Optimized **spectrogram rendering pipeline**, improving **frame rate and interaction smoothness** during real-time display.
+- Reduced unnecessary redraws in the frontend, lowering CPU usage under continuous data streams.
+
+### Bug Fixes
+
+- Fixed **upgrade status priority logic**, ensuring correct status reporting when multiple upgrade conditions overlap.
+- Added **write permission checks before startup** to prevent silent failures during initialization.
+- Explicitly specified **HTTPS scheme in CSP sources**, avoiding mixed-content and policy resolution issues in some browsers.
+
+## v4.3.2
+
+### Release Notes
+
+This release introduces **configuration flexibility and frontend observability improvements**, focusing on **custom sensor adaptability** and **web-based data visualization**.
+
+By allowing users to define **custom sensor parameters**, AnyShake Observer can now better support experimental setups. In parallel, the **web frontend gains spectrogram viewing capability**, improving real-time signal inspection directly from the browser without requiring local analysis tools.
+
+### New Features
+
+- Added support for **custom sensor parameters**, enabling flexible definition of sensor characteristics beyond predefined device profiles.
+- Added **spectrogram viewer** to the **web frontend**, allowing users to visualize frequency-domain data directly in the browser.
+
+### Bug Fixes
+
+- Removed unavailable earthquake event data sources: **Sichuan Earthquake Administration (Bulletin)**, **Australian Passive Seismic Server**.
+
+## v4.3.1
+
+### Release Notes
+
+This is a **minor bugfix release** focused on **data correctness and metadata accuracy**, addressing issues discovered after v4.3.0.
+
+### New Features
+
+- Support **E-C131G** device metadata.
+
+### Bug Fixes
+
+- Fixed **sign extension for 24-bit signed integer data**, correcting decoding errors caused by non-standard integer width.
+- Updated **device gain values** to ensure metadata accuracy and correct amplitude scaling.
+
+## v4.3.0
+
+### Release Notes
+
+This release focuses on **reliability, maintainability, and long-term operability**, with a strong emphasis on **automatic upgrade infrastructure**, **time synchronization precision**, and **network robustness**.
+
+The introduction of a **fully integrated automatic upgrade mechanism** significantly reduces maintenance overhead, allowing AnyShake Observer to stay up to date with minimal user intervention. At the same time, continued refinements to **NTP, GNSS time handling, and clock drift compensation** further improve timestamp accuracy in both online and offline deployments.
+
+This version also delivers multiple **stability fixes** across protocol handling, metadata accuracy, and connectivity edge cases, ensuring smoother long-term operation in production environments.
+
+### What’s New
+
+With this release, AnyShake Observer gains the ability to **self-update safely and predictably**, including version compatibility checks and support for pre-release channels. Time synchronization logic has been further refined to better handle **local clock drift**, **network latency**, and **unstable environments**, while new mechanisms improve **real-time data forwarding and observability**.
+
+Several internal refactors improve correctness and reduce subtle failure modes, particularly in **device metadata, file handling, and protocol behavior**.
+
+### New Features
+
+- Implemented **automatic upgrade system**, enabling seamless version updates.
+- Added support for **pre-release versions** in the build and upgrade pipeline.
+- Enabled treating **Git tags as latest releases** for version resolution.
+- Introduced **real-time data forwarding**, allowing external consumers to subscribe to live streams.
+- Added **manual delay control** for the built-in NTP server.
+- Improved **NTP server accuracy**, including higher-precision reference handling.
+- Set **GNSS as NTP server refid**, improving traceability and diagnostics.
+- Enhanced **clock drift compensation** to better handle long-running deployments.
+- Improved **time synchronization accuracy** under unstable local clocks.
+- Added **latest log viewing** support via internal logging refinements (infrastructure side).
+
+### Bug Fixes
+
+- Fixed **connectivity issues with CWA data source**, improving reliability.
+- Corrected **gain values for accelerometer metadata**.
+- Fixed **file ID changes** caused by list updates.
+- Resolved **TCP read blocking** issues.
+- Fixed **incorrect gain factors** in device metadata.
+- Fixed **Docker build failures** and related build inconsistencies.
+- Corrected **versioning and build flag handling** issues.
+- Fixed **protocol handling regressions** affecting frame stability.
+- Resolved **time drift issues** in NTP mode under certain conditions.
+- Fixed **typos in logs and diagnostics output**.
+- Improved robustness of **local clock drift handling** to prevent cascading timestamp errors.
+
 ## v4.2.0
 
 ### Release Notes
@@ -10,7 +229,7 @@ This release brings a wide range of **time synchronization enhancements, stabili
 
 Our **crowdfunding campaign has successfully concluded**, and we sincerely thank every supporter — your trust and encouragement continue to drive us forward. With this milestone achieved, we are now preparing to enter **mass production**, moving ahead with confidence toward the official **shipment of AnyShake**.
 
-#### What’s New
+### What’s New
 
 This version achieves **complete independence from the system clock** — even if the system time experiences large jumps, the internal clock of AnyShake Observer remains unaffected. In **GNSS mode**, the software can now run **entirely offline** and also act as an **NTP server** for other devices on the local network. For example, if there are devices in your LAN without GNSS capability but still requiring **high-precision time synchronization**, you can simply point their NTP address to AnyShake Observer.
 
@@ -57,7 +276,7 @@ This update continues our mission to make seismic monitoring more powerful, acce
 
 Don’t miss out on the launch of **AnyShake Explorer** — our open-source, high-performance seismic acquisition hardware. Available now on Crowd Supply: [www.crowdsupply.com/senseplex/anyshake-explorer](https://www.crowdsupply.com/senseplex/anyshake-explorer)
 
-#### What’s New
+### What’s New
 
 This version delivers major reliability enhancements to time synchronization, networking flexibility, and QuakeSense analytics. It also features UI polish, bug fixes, and better compatibility across diverse user environments.
 
@@ -88,7 +307,7 @@ This version delivers major reliability enhancements to time synchronization, ne
 
 This patch release focuses on improving stability, performance, and overall robustness. It resolves several critical issues, including a potential crash in the helicorder module, and introduces subtle improvements to the application's lifecycle management and UI.
 
-#### What’s New
+### What’s New
 
 This update enhances reliability during seismic clip exports and real-time data handling, ensuring smoother operation in both background services and user interactions.
 
@@ -114,7 +333,7 @@ This update enhances reliability during seismic clip exports and real-time data 
 
 This patch release focuses on reliability improvements and critical bug fixes. It introduces STEIM2 compression support for MiniSEED export and resolves issues affecting helicorder rendering and token expiration.
 
-#### What’s New
+### What’s New
 
 Enhancements in this version contribute to better performance, interoperability, and system integrity, especially when exporting seismic clips and managing real-time data views.
 
@@ -133,7 +352,7 @@ Enhancements in this version contribute to better performance, interoperability,
 
 A minor but essential update focusing on stability, performance, and new regional data support. This release continues our commitment to delivering high-quality, open-source seismic monitoring software.
 
-#### What’s New
+### What’s New
 
 This version includes critical bug fixes, UI improvements, and a new data integration, further enhancing the reliability and usability of the AnyShake Observer platform.
 
@@ -159,7 +378,7 @@ We are proud to announce **AnyShake Observer v4.0.0**, a major release that mark
 
 Alongside this release, we are launching the **AnyShake Explorer**, a fully open-source, low-cost, and reliable seismic data acquisition device. Designed for researchers, hobbyists, and professionals alike, the Explorer integrates seamlessly with AnyShake Observer and sets a new standard for affordable and powerful seismology tools.
 
-#### What’s New
+### What’s New
 
 This version represents a leap forward in terms of **usability, security, reliability, and functionality** — setting a new benchmark in open-source seismic software.
 

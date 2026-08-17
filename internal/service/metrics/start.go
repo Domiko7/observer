@@ -2,7 +2,9 @@ package metrics
 
 import (
 	"context"
+	"crypto/md5"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net/http"
@@ -23,6 +25,32 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
 	_trace "go.opentelemetry.io/otel/trace"
 )
+
+func (s *MetricsServiceImpl) getBuildInfo() []attribute.KeyValue {
+	buildTime := s.build.GetTime().Format(time.RFC3339)
+	buildChannel := s.build.GetChannel()
+	buildCommit := s.build.GetCommit()
+	toolchainId := s.build.GetToolchainId()
+	toolchainObj := s.build.GetToolchain()
+
+	values := []attribute.KeyValue{
+		attribute.String("service.build.time", buildTime),
+		attribute.String("service.build.channel", buildChannel),
+		attribute.String("service.build.commit", buildCommit),
+		attribute.String("service.build.toolchainId", toolchainId),
+	}
+	if toolchainObj != nil {
+		extraValues := []attribute.KeyValue{
+			attribute.String("service.build.toolchain.name", toolchainObj.Name),
+			attribute.String("service.build.toolchain.name", toolchainObj.GOOS),
+			attribute.String("service.build.toolchain.name", toolchainObj.GOARCH),
+			attribute.String("service.build.toolchain.name", toolchainObj.GOARM),
+			attribute.String("service.build.toolchain.name", toolchainObj.GOMIPS),
+		}
+		values = append(values, extraValues...)
+	}
+	return values
+}
 
 func (s *MetricsServiceImpl) handleInterrupt(ticker *time.Ticker) {
 	ticker.Stop()
@@ -50,22 +78,24 @@ func (s *MetricsServiceImpl) Start() error {
 		return fmt.Errorf("failed to create OTLP exporter: %w", err)
 	}
 
+	hashedHostname := md5.Sum([]byte(s.hostInfo.Hostname))
+	resources := []attribute.KeyValue{
+		semconv.TelemetrySDKLanguageGo,
+		semconv.ServiceNameKey.String(OTLP_SERVICE_NAME),
+		semconv.ServiceVersionKey.String(s.version.String()),
+		semconv.ProcessRuntimeVersionKey.String(runtime.Version()),
+		semconv.OSVersionKey.String(s.hostInfo.PlatformVersion),
+		semconv.OSNameKey.String(s.hostInfo.Platform),
+		semconv.OSTypeKey.String(runtime.GOOS),
+		semconv.HostArchKey.String(runtime.GOARCH),
+		// Report only hashed hostname for privacy
+		semconv.HostNameKey.String(hex.EncodeToString(hashedHostname[:])),
+	}
+	resources = append(resources, s.getBuildInfo()...)
+
 	s.oltpTracerProvider = trace.NewTracerProvider(
 		trace.WithBatcher(exporter),
-		trace.WithResource(resource.NewSchemaless(
-			semconv.TelemetrySDKLanguageGo,
-			semconv.ServiceNameKey.String(OTLP_SERVICE_NAME),
-			semconv.ServiceVersionKey.String(s.binaryVersion),
-			attribute.String("service.build_platform", s.buildPlatform),
-			attribute.String("service.commit_hash", s.commitHash),
-			semconv.ProcessRuntimeVersionKey.String(runtime.Version()),
-			semconv.HostID(s.hostInfo.HostID),
-			semconv.OSVersionKey.String(s.hostInfo.PlatformVersion),
-			semconv.OSNameKey.String(s.hostInfo.Platform),
-			semconv.HostNameKey.String(s.hostInfo.Hostname),
-			semconv.OSTypeKey.String(runtime.GOOS),
-			semconv.HostArchKey.String(runtime.GOARCH),
-		)),
+		trace.WithResource(resource.NewSchemaless(resources...)),
 	)
 	otel.SetTracerProvider(s.oltpTracerProvider)
 
@@ -104,7 +134,7 @@ func (s *MetricsServiceImpl) checkConnectivity() error {
 	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{TLSClientConfig: &tls.Config{MinVersion: tls.VersionTLS12}}}
 	resp, err := client.Get(CONNECTIVITY_CHECK_URL)
 	if err != nil {
-		return fmt.Errorf("connection failed: %w", err)
+		return fmt.Errorf("pre-check failed: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -123,20 +153,18 @@ func (s *MetricsServiceImpl) reportCurrentStatus(tracer _trace.Tracer) {
 	defer cancel()
 
 	currentTime := s.timeSource.Now()
+	systemTime := time.Now().UTC()
 	appElapsed := currentTime.Sub(s.startTime)
 
 	ctx, appSpan := tracer.Start(ctx, "app-status")
 	appSpan.SetAttributes(attribute.String("app.current_time", currentTime.Format(time.RFC3339)))
+	appSpan.SetAttributes(attribute.String("app.system_time", systemTime.Format(time.RFC3339)))
 	appSpan.SetAttributes(attribute.String("app.start_time", s.startTime.Format(time.RFC3339)))
 	appSpan.SetAttributes(attribute.String("app.elapsed", appElapsed.String()))
 	defer appSpan.End()
 
 	var errObj error
 
-	cpuModel, err := system.GetCpuModel()
-	if err != nil {
-		errObj = errors.Join(errObj, err)
-	}
 	cpuPercent, err := system.GetCpuPercent()
 	if err != nil {
 		errObj = errors.Join(errObj, err)
@@ -166,7 +194,6 @@ func (s *MetricsServiceImpl) reportCurrentStatus(tracer _trace.Tracer) {
 	} else {
 		systemSpan.SetStatus(codes.Ok, "successfully got current system status")
 		systemSpan.SetAttributes(attribute.String("system.os_uptime", strconv.FormatInt(osUptime, 10)))
-		systemSpan.SetAttributes(attribute.String("system.cpu_model", cpuModel))
 		systemSpan.SetAttributes(attribute.Float64("system.cpu_usage", cpuPercent))
 		systemSpan.SetAttributes(attribute.Float64("system.memory_usage", memPercent))
 		systemSpan.SetAttributes(attribute.Float64("system.disk_usage", diskPercent))

@@ -5,20 +5,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 
-import { AsideMenu } from './components/AsideMenu';
-import { BreadCrumb } from './components/BreadCrumb';
-import { DialogModal } from './components/DialogModal';
-import { Footer } from './components/Footer';
-import { Header } from './components/Header';
-import { Markdown } from './components/Markdown';
-import { RouterView } from './components/RouterView';
-import { Scroller } from './components/Scroller';
-import { Skeleton } from './components/Skeleton';
+import { AsideMenu } from './components/base/AsideMenu';
+import { BreadCrumb } from './components/base/BreadCrumb';
+import { Footer } from './components/base/Footer';
+import { Header } from './components/base/Header';
+import { DialogModal } from './components/ui/DialogModal';
+import { RouterView } from './components/ui/RouterView';
+import { Skeleton } from './components/ui/Skeleton';
+import { Markdown } from './components/widget/Markdown';
+import { Scroller } from './components/widget/Scroller';
 import { globalConfig } from './config/global';
 import { localeConfig } from './config/locale';
 import { menuConfig } from './config/menu';
 import { routerConfig } from './config/router';
-import { useIsGenuineProductLazyQuery } from './graphql';
+import { useGetSoftwareVersionQuery, useIsGenuineProductLazyQuery } from './graphql';
 import { sendUserConfirm } from './helpers/alert/sendUserConfirm';
 import { getCtaMessageDataUrl } from './helpers/app/getCtaMessageDataUrl';
 import { useCredentialStore } from './stores/credential';
@@ -33,26 +33,30 @@ interface IEntry {
 export const Entry = ({ currentLocale, locales, onSwitchLocale }: IEntry) => {
     const { t } = useTranslation();
 
+    const { data: getSoftwareVersionData, loading: getSoftwareVersionLoading } =
+        useGetSoftwareVersionQuery();
     useEffect(() => {
-        // eslint-disable-next-line no-console
-        console.log(
-            `%c${globalConfig.version}`,
-            'background: #945cff; color: #ffffff; font-weight: bold; font-size: 12px; padding: 2px 4px;'
-        );
-    }, []);
+        if (!getSoftwareVersionLoading && getSoftwareVersionData?.getSoftwareVersion) {
+            // eslint-disable-next-line no-console
+            console.log(
+                `%c${getSoftwareVersionData.getSoftwareVersion}`,
+                'background: #945cff; color: #ffffff; font-weight: bold; font-size: 12px; padding: 2px 4px;'
+            );
+        }
+    }, [getSoftwareVersionData, getSoftwareVersionLoading]);
 
     const { pathname } = useLocation();
-    const [currentTitle, setCurrentTitle] = useState(globalConfig.name[currentLocale]);
+    const [currentTitle, setCurrentTitle] = useState(t(globalConfig.name));
     useEffect(() => {
         for (const key in routerConfig.routes) {
             const { uri } = routerConfig.routes[key];
             if (pathname === uri) {
-                setCurrentTitle(routerConfig.routes[key].title[currentLocale]);
+                setCurrentTitle(t(routerConfig.routes[key].title));
                 return;
             }
         }
-        setCurrentTitle(routerConfig.routes.default.title[currentLocale]);
-    }, [pathname, currentLocale]);
+        setCurrentTitle(t(routerConfig.routes.default.title));
+    }, [pathname, currentLocale, t]);
 
     const { clearCredential } = useCredentialStore();
     const handleLogoutSubmit = () => {
@@ -123,17 +127,13 @@ export const Entry = ({ currentLocale, locales, onSwitchLocale }: IEntry) => {
     return (
         <div className="animate-fade animate-duration-500 animate-delay-300">
             <Header
-                title={globalConfig.name[currentLocale]}
+                title={t(globalConfig.name)}
                 onLogout={handleLogoutSubmit}
                 currentLocale={currentLocale}
                 onSwitchLocale={onSwitchLocale}
                 locales={locales}
             />
-            <AsideMenu
-                title={globalConfig.name[currentLocale]}
-                menu={menuConfig}
-                currentLocale={currentLocale}
-            />
+            <AsideMenu title={t(globalConfig.name)} menu={menuConfig} />
 
             <div className="ml-10 flex min-h-screen flex-col space-y-4 p-20 px-4">
                 <BreadCrumb
@@ -142,8 +142,7 @@ export const Entry = ({ currentLocale, locales, onSwitchLocale }: IEntry) => {
                     title={currentTitle}
                 />
                 <RouterView
-                    routerProps={{ currentLocale }}
-                    currentLocale={currentLocale}
+                    routerProps={{ currentLocale, onSwitchLocale, locales }}
                     appName={globalConfig.name}
                     routes={routerConfig.routes}
                     suspense={<Skeleton />}
@@ -153,15 +152,13 @@ export const Entry = ({ currentLocale, locales, onSwitchLocale }: IEntry) => {
             <Footer
                 copyright={globalConfig.copyright}
                 repository={globalConfig.repository}
-                currentLocale={currentLocale}
-                text={globalConfig.footer}
+                text={t(globalConfig.footer)}
                 homepage={globalConfig.homepage}
             />
             <Scroller threshold={100} />
 
             {ctaMessage && (
                 <DialogModal
-                    enlarge
                     heading={
                         <div className="space-y-4 text-gray-800">
                             <h2 className="flex items-center space-x-2 text-lg font-extrabold">

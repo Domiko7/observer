@@ -9,14 +9,14 @@ import (
 	"github.com/anyshake/observer/internal/service"
 	"github.com/anyshake/observer/pkg/ringbuf"
 	"github.com/anyshake/observer/pkg/timesource"
-	"github.com/bclswl0827/eewgo"
+	"github.com/bclswl0827/obsgo/signal"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 )
 
 const ID = "service_quakesense"
 
 const (
-	FILTER_NUM_TAPS  = 101
+	FILTER_ORDER     = 2
 	NO_FILTER        = "nofilter"
 	LOW_PASS_FILTER  = "lowpass"
 	BAND_PASS_FILTER = "bandpass"
@@ -42,13 +42,14 @@ type QuakeSenseServiceImpl struct {
 	timeSource    *timesource.Source
 	actionHandler *action.Handler
 
-	channelBuffer  ringbuf.Buffer[float64]
+	channelBuffer  *ringbuf.Buffer[float64]
 	prevSamplerate int
 
 	mqttBroker   string
 	mqttTopic    string
 	mqttUsername string
 	mqttPassword string
+	mqttClientId string
 	mqttClient   mqtt.Client
 
 	stationName        string
@@ -73,5 +74,5 @@ type QuakeSenseServiceImpl struct {
 	filterType   string
 	maxFreq      float64
 	minFreq      float64
-	filterKernel *eewgo.FIRFilter
+	filterKernel *signal.IIRFilter
 }

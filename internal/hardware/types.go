@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/anyshake/observer/internal/hardware/explorer"
-	"github.com/anyshake/observer/internal/hardware/explorer/metadata"
+	"github.com/anyshake/observer/pkg/metadata"
 )
 
 type IHardware interface {
@@ -14,6 +14,9 @@ type IHardware interface {
 
 	Subscribe(clientId string, handler explorer.EventHandler) error
 	Unsubscribe(clientId string) error
+
+	SubscribeRealtime(clientId string, handler explorer.EventHandler) error
+	UnsubscribeRealtime(clientId string) error
 
 	GetConfig() explorer.DeviceConfig
 	GetStatus() explorer.DeviceStatus
@@ -31,5 +34,5 @@ type IHardware interface {
 		stationCode,
 		locationCode string,
 		fuzzyCoordinates bool,
-	) (metadata.IMetadata, error)
+	) (*metadata.Render, error)
 }

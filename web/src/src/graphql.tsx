@@ -25,10 +25,15 @@ export type Scalars = {
 export type Mutation = {
   __typename?: 'Mutation';
   createSysUser: Scalars['String']['output'];
-  purgeHelicorderFiles: Scalars['Boolean']['output'];
-  purgeMiniSeedFiles: Scalars['Boolean']['output'];
-  purgeSeisRecords: Scalars['Boolean']['output'];
+  importGlobalConfig: Scalars['Boolean']['output'];
+  purgeHelicorderFiles: PurgeDataJob;
+  purgeHelicorderFilesByDate: PurgeDataJob;
+  purgeMiniSeedFiles: PurgeDataJob;
+  purgeMiniSeedFilesByDate: PurgeDataJob;
+  purgeSeisRecords: PurgeDataJob;
+  purgeSeisRecordsByDate: PurgeDataJob;
   removeSysUser: Scalars['Boolean']['output'];
+  restartApplication: Scalars['Boolean']['output'];
   restartService: Scalars['Boolean']['output'];
   restoreServiceConfig: Scalars['Boolean']['output'];
   restoreStationConfig: Scalars['Boolean']['output'];
@@ -44,6 +49,29 @@ export type MutationCreateSysUserArgs = {
   admin: Scalars['Boolean']['input'];
   password: Scalars['String']['input'];
   username: Scalars['String']['input'];
+};
+
+
+export type MutationImportGlobalConfigArgs = {
+  data: Scalars['String']['input'];
+};
+
+
+export type MutationPurgeHelicorderFilesByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
+};
+
+
+export type MutationPurgeMiniSeedFilesByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
+};
+
+
+export type MutationPurgeSeisRecordsByDateArgs = {
+  endDate: Scalars['Int64']['input'];
+  startDate: Scalars['Int64']['input'];
 };
 
 
@@ -94,7 +122,9 @@ export type MutationUpdateSysUserArgs = {
 
 export type Query = {
   __typename?: 'Query';
+  exportGlobalConfig: Scalars['String']['output'];
   getApplicationLogs?: Maybe<Array<Scalars['String']['output']>>;
+  getCleanupStatus: PurgeDataJob;
   getCurrentTime: Scalars['Int64']['output'];
   getCurrentUser: SysUser;
   getDeviceConfig: DeviceConfig;
@@ -107,13 +137,14 @@ export type Query = {
   getMiniSeedFiles: Array<Maybe<ServiceAsset>>;
   getSeisRecordsByTime: Array<Maybe<SeisRecord>>;
   getServiceConfigConstraint: Array<ServiceConfigConstraint>;
-  getServiceLogs?: Maybe<Array<Scalars['String']['output']>>;
   getServiceStatus?: Maybe<Array<ServiceStatus>>;
+  getSoftwareVersion: Scalars['String']['output'];
   getStationConfig: Scalars['Map']['output'];
   getStationConfigConstraint: Array<ConfigConstraint>;
   getStationMetadata: Scalars['String']['output'];
   getSysUsers: Array<SysUser>;
   getSystemStatus: SystemStatus;
+  getUpgradeStatus?: Maybe<UpgradeStatus>;
   isGenuineProduct: Scalars['Boolean']['output'];
 };
 
@@ -126,11 +157,6 @@ export type QueryGetEventsBySourceArgs = {
 export type QueryGetSeisRecordsByTimeArgs = {
   endTime: Scalars['Int64']['input'];
   startTime: Scalars['Int64']['input'];
-};
-
-
-export type QueryGetServiceLogsArgs = {
-  serviceId: Scalars['String']['input'];
 };
 
 
@@ -182,6 +208,23 @@ export type DeviceStatus = {
   messages: Scalars['Int64']['output'];
   startedAt: Scalars['Int64']['output'];
   updatedAt: Scalars['Int64']['output'];
+};
+
+export enum JobStatus {
+  Failed = 'FAILED',
+  Idle = 'IDLE',
+  Running = 'RUNNING',
+  Succeeded = 'SUCCEEDED'
+}
+
+export type PurgeDataJob = {
+  __typename?: 'purgeDataJob';
+  error?: Maybe<Scalars['String']['output']>;
+  finishedAt?: Maybe<Scalars['Int64']['output']>;
+  id: Scalars['String']['output'];
+  kind: Scalars['String']['output'];
+  startedAt?: Maybe<Scalars['Int64']['output']>;
+  status: JobStatus;
 };
 
 export type SeisEvent = {
@@ -261,6 +304,20 @@ export type SystemStatus = {
   uptime: Scalars['Int64']['output'];
 };
 
+export type UpgradeStatus = {
+  __typename?: 'upgradeStatus';
+  applied: Scalars['Boolean']['output'];
+  current: Scalars['String']['output'];
+  eligible: Scalars['Boolean']['output'];
+  latest: Scalars['String']['output'];
+  required: Scalars['String']['output'];
+};
+
+export type GetSoftwareVersionQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetSoftwareVersionQuery = { __typename?: 'Query', getSoftwareVersion: string };
+
 export type IsGenuineProductQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -294,7 +351,12 @@ export type GetSeismicRecordsQuery = { __typename?: 'Query', getSeisRecordsByTim
 export type GetHomeDataQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetHomeDataQuery = { __typename?: 'Query', getCurrentTime: number, getStationConfig: any, getDeviceId: string, getDeviceConfig: { __typename?: 'deviceConfig', packetInterval: number, sampleRate: number, channelCodes: Array<string>, gnssEnabled: boolean, model: string, protocol: string }, getDeviceInfo: { __typename?: 'deviceInfo', latitude?: number | null, longitude?: number | null, elevation?: number | null, temperature?: number | null }, getDeviceStatus: { __typename?: 'deviceStatus', startedAt: number, updatedAt: number, frames: number, errors: number, messages: number }, getServiceStatus?: Array<{ __typename?: 'serviceStatus', serviceId: string, isRunning: boolean, name: string, description: string }> | null, getSystemStatus: { __typename?: 'systemStatus', cpu: number, memory: number, disk: number, uptime: number } };
+export type GetHomeDataQuery = { __typename?: 'Query', getCurrentTime: number, getStationConfig: any, getDeviceId: string, getCurrentUser: { __typename?: 'sysUser', admin: boolean }, getDeviceConfig: { __typename?: 'deviceConfig', packetInterval: number, sampleRate: number, channelCodes: Array<string>, gnssEnabled: boolean, model: string, protocol: string }, getDeviceInfo: { __typename?: 'deviceInfo', latitude?: number | null, longitude?: number | null, elevation?: number | null, temperature?: number | null }, getDeviceStatus: { __typename?: 'deviceStatus', startedAt: number, updatedAt: number, frames: number, errors: number, messages: number }, getServiceStatus?: Array<{ __typename?: 'serviceStatus', serviceId: string, isRunning: boolean, name: string, description: string }> | null, getSystemStatus: { __typename?: 'systemStatus', cpu: number, memory: number, disk: number, uptime: number } };
+
+export type GetUpgradeStatusQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetUpgradeStatusQuery = { __typename?: 'Query', getUpgradeStatus?: { __typename?: 'upgradeStatus', current: string, required: string, latest: string, eligible: boolean, applied: boolean } | null };
 
 export type CreateUserMutationVariables = Exact<{
   username: Scalars['String']['input'];
@@ -304,6 +366,11 @@ export type CreateUserMutationVariables = Exact<{
 
 
 export type CreateUserMutation = { __typename?: 'Mutation', createSysUser: string };
+
+export type ExportGlobalConfigQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type ExportGlobalConfigQuery = { __typename?: 'Query', exportGlobalConfig: string };
 
 export type GetApplicationLogsQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -332,6 +399,13 @@ export type GetUserListQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetUserListQuery = { __typename?: 'Query', getSysUsers: Array<{ __typename?: 'sysUser', userId: string, username: string, createdAt: number, updatedAt: number, lastLogin: number, userIp: string, userAgent: string, admin: boolean }> };
 
+export type ImportGlobalConfigMutationVariables = Exact<{
+  data: Scalars['String']['input'];
+}>;
+
+
+export type ImportGlobalConfigMutation = { __typename?: 'Mutation', importGlobalConfig: boolean };
+
 export type IsCurrentUserAdminQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -340,17 +414,46 @@ export type IsCurrentUserAdminQuery = { __typename?: 'Query', getCurrentUser: { 
 export type PurgeSeisRecordsMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeSeisRecordsMutation = { __typename?: 'Mutation', purgeSeisRecords: boolean };
+export type PurgeSeisRecordsMutation = { __typename?: 'Mutation', purgeSeisRecords: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeSeisRecordsByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeSeisRecordsByDateMutation = { __typename?: 'Mutation', purgeSeisRecordsByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type GetCleanupStatusQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetCleanupStatusQuery = { __typename?: 'Query', getCleanupStatus: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type PurgeMiniSeedFilesMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeMiniSeedFilesMutation = { __typename?: 'Mutation', purgeMiniSeedFiles: boolean };
+export type PurgeMiniSeedFilesMutation = { __typename?: 'Mutation', purgeMiniSeedFiles: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeMiniSeedFilesByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeMiniSeedFilesByDateMutation = { __typename?: 'Mutation', purgeMiniSeedFilesByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type PurgeHelicorderFilesMutationVariables = Exact<{ [key: string]: never; }>;
 
 
-export type PurgeHelicorderFilesMutation = { __typename?: 'Mutation', purgeHelicorderFiles: boolean };
+export type PurgeHelicorderFilesMutation = { __typename?: 'Mutation', purgeHelicorderFiles: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
+
+export type PurgeHelicorderFilesByDateMutationVariables = Exact<{
+  startDate: Scalars['Int64']['input'];
+  endDate: Scalars['Int64']['input'];
+}>;
+
+
+export type PurgeHelicorderFilesByDateMutation = { __typename?: 'Mutation', purgeHelicorderFilesByDate: { __typename?: 'purgeDataJob', id: string, kind: string, status: JobStatus, startedAt?: number | null, finishedAt?: number | null, error?: string | null } };
 
 export type RestoreStationConfigMutationVariables = Exact<{ [key: string]: never; }>;
 
@@ -370,6 +473,11 @@ export type RemoveUserMutationVariables = Exact<{
 
 
 export type RemoveUserMutation = { __typename?: 'Mutation', removeSysUser: boolean };
+
+export type RestartApplicationMutationVariables = Exact<{ [key: string]: never; }>;
+
+
+export type RestartApplicationMutation = { __typename?: 'Mutation', restartApplication: boolean };
 
 export type RestartServiceMutationVariables = Exact<{
   serviceId: Scalars['String']['input'];
@@ -420,6 +528,43 @@ export type UpdateUserMutationVariables = Exact<{
 export type UpdateUserMutation = { __typename?: 'Mutation', updateSysUser: boolean };
 
 
+export const GetSoftwareVersionDocument = gql`
+    query getSoftwareVersion {
+  getSoftwareVersion
+}
+    `;
+
+/**
+ * __useGetSoftwareVersionQuery__
+ *
+ * To run a query within a React component, call `useGetSoftwareVersionQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetSoftwareVersionQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetSoftwareVersionQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetSoftwareVersionQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>(GetSoftwareVersionDocument, options);
+      }
+export function useGetSoftwareVersionLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>(GetSoftwareVersionDocument, options);
+        }
+export function useGetSoftwareVersionSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>(GetSoftwareVersionDocument, options);
+        }
+export type GetSoftwareVersionQueryHookResult = ReturnType<typeof useGetSoftwareVersionQuery>;
+export type GetSoftwareVersionLazyQueryHookResult = ReturnType<typeof useGetSoftwareVersionLazyQuery>;
+export type GetSoftwareVersionSuspenseQueryHookResult = ReturnType<typeof useGetSoftwareVersionSuspenseQuery>;
+export type GetSoftwareVersionQueryResult = ApolloReactCommon.QueryResult<GetSoftwareVersionQuery, GetSoftwareVersionQueryVariables>;
 export const IsGenuineProductDocument = gql`
     query isGenuineProduct {
   isGenuineProduct
@@ -651,6 +796,9 @@ export const GetHomeDataDocument = gql`
   getCurrentTime
   getStationConfig
   getDeviceId
+  getCurrentUser {
+    admin
+  }
   getDeviceConfig {
     packetInterval
     sampleRate
@@ -718,6 +866,49 @@ export type GetHomeDataQueryHookResult = ReturnType<typeof useGetHomeDataQuery>;
 export type GetHomeDataLazyQueryHookResult = ReturnType<typeof useGetHomeDataLazyQuery>;
 export type GetHomeDataSuspenseQueryHookResult = ReturnType<typeof useGetHomeDataSuspenseQuery>;
 export type GetHomeDataQueryResult = ApolloReactCommon.QueryResult<GetHomeDataQuery, GetHomeDataQueryVariables>;
+export const GetUpgradeStatusDocument = gql`
+    query getUpgradeStatus {
+  getUpgradeStatus {
+    current
+    required
+    latest
+    eligible
+    applied
+  }
+}
+    `;
+
+/**
+ * __useGetUpgradeStatusQuery__
+ *
+ * To run a query within a React component, call `useGetUpgradeStatusQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetUpgradeStatusQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetUpgradeStatusQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetUpgradeStatusQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>(GetUpgradeStatusDocument, options);
+      }
+export function useGetUpgradeStatusLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>(GetUpgradeStatusDocument, options);
+        }
+export function useGetUpgradeStatusSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>(GetUpgradeStatusDocument, options);
+        }
+export type GetUpgradeStatusQueryHookResult = ReturnType<typeof useGetUpgradeStatusQuery>;
+export type GetUpgradeStatusLazyQueryHookResult = ReturnType<typeof useGetUpgradeStatusLazyQuery>;
+export type GetUpgradeStatusSuspenseQueryHookResult = ReturnType<typeof useGetUpgradeStatusSuspenseQuery>;
+export type GetUpgradeStatusQueryResult = ApolloReactCommon.QueryResult<GetUpgradeStatusQuery, GetUpgradeStatusQueryVariables>;
 export const CreateUserDocument = gql`
     mutation createUser($username: String!, $password: String!, $admin: Boolean!) {
   createSysUser(username: $username, password: $password, admin: $admin)
@@ -751,6 +942,43 @@ export function useCreateUserMutation(baseOptions?: ApolloReactHooks.MutationHoo
 export type CreateUserMutationHookResult = ReturnType<typeof useCreateUserMutation>;
 export type CreateUserMutationResult = ApolloReactCommon.MutationResult<CreateUserMutation>;
 export type CreateUserMutationOptions = ApolloReactCommon.BaseMutationOptions<CreateUserMutation, CreateUserMutationVariables>;
+export const ExportGlobalConfigDocument = gql`
+    query exportGlobalConfig {
+  exportGlobalConfig
+}
+    `;
+
+/**
+ * __useExportGlobalConfigQuery__
+ *
+ * To run a query within a React component, call `useExportGlobalConfigQuery` and pass it any options that fit your needs.
+ * When your component renders, `useExportGlobalConfigQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useExportGlobalConfigQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useExportGlobalConfigQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>(ExportGlobalConfigDocument, options);
+      }
+export function useExportGlobalConfigLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>(ExportGlobalConfigDocument, options);
+        }
+export function useExportGlobalConfigSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>(ExportGlobalConfigDocument, options);
+        }
+export type ExportGlobalConfigQueryHookResult = ReturnType<typeof useExportGlobalConfigQuery>;
+export type ExportGlobalConfigLazyQueryHookResult = ReturnType<typeof useExportGlobalConfigLazyQuery>;
+export type ExportGlobalConfigSuspenseQueryHookResult = ReturnType<typeof useExportGlobalConfigSuspenseQuery>;
+export type ExportGlobalConfigQueryResult = ApolloReactCommon.QueryResult<ExportGlobalConfigQuery, ExportGlobalConfigQueryVariables>;
 export const GetApplicationLogsDocument = gql`
     query getApplicationLogs {
   getApplicationLogs
@@ -977,6 +1205,37 @@ export type GetUserListQueryHookResult = ReturnType<typeof useGetUserListQuery>;
 export type GetUserListLazyQueryHookResult = ReturnType<typeof useGetUserListLazyQuery>;
 export type GetUserListSuspenseQueryHookResult = ReturnType<typeof useGetUserListSuspenseQuery>;
 export type GetUserListQueryResult = ApolloReactCommon.QueryResult<GetUserListQuery, GetUserListQueryVariables>;
+export const ImportGlobalConfigDocument = gql`
+    mutation importGlobalConfig($data: String!) {
+  importGlobalConfig(data: $data)
+}
+    `;
+export type ImportGlobalConfigMutationFn = ApolloReactCommon.MutationFunction<ImportGlobalConfigMutation, ImportGlobalConfigMutationVariables>;
+
+/**
+ * __useImportGlobalConfigMutation__
+ *
+ * To run a mutation, you first call `useImportGlobalConfigMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useImportGlobalConfigMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [importGlobalConfigMutation, { data, loading, error }] = useImportGlobalConfigMutation({
+ *   variables: {
+ *      data: // value for 'data'
+ *   },
+ * });
+ */
+export function useImportGlobalConfigMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<ImportGlobalConfigMutation, ImportGlobalConfigMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<ImportGlobalConfigMutation, ImportGlobalConfigMutationVariables>(ImportGlobalConfigDocument, options);
+      }
+export type ImportGlobalConfigMutationHookResult = ReturnType<typeof useImportGlobalConfigMutation>;
+export type ImportGlobalConfigMutationResult = ApolloReactCommon.MutationResult<ImportGlobalConfigMutation>;
+export type ImportGlobalConfigMutationOptions = ApolloReactCommon.BaseMutationOptions<ImportGlobalConfigMutation, ImportGlobalConfigMutationVariables>;
 export const IsCurrentUserAdminDocument = gql`
     query isCurrentUserAdmin {
   getCurrentUser {
@@ -1018,7 +1277,14 @@ export type IsCurrentUserAdminSuspenseQueryHookResult = ReturnType<typeof useIsC
 export type IsCurrentUserAdminQueryResult = ApolloReactCommon.QueryResult<IsCurrentUserAdminQuery, IsCurrentUserAdminQueryVariables>;
 export const PurgeSeisRecordsDocument = gql`
     mutation purgeSeisRecords {
-  purgeSeisRecords
+  purgeSeisRecords {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeSeisRecordsMutationFn = ApolloReactCommon.MutationFunction<PurgeSeisRecordsMutation, PurgeSeisRecordsMutationVariables>;
@@ -1046,9 +1312,99 @@ export function usePurgeSeisRecordsMutation(baseOptions?: ApolloReactHooks.Mutat
 export type PurgeSeisRecordsMutationHookResult = ReturnType<typeof usePurgeSeisRecordsMutation>;
 export type PurgeSeisRecordsMutationResult = ApolloReactCommon.MutationResult<PurgeSeisRecordsMutation>;
 export type PurgeSeisRecordsMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeSeisRecordsMutation, PurgeSeisRecordsMutationVariables>;
+export const PurgeSeisRecordsByDateDocument = gql`
+    mutation purgeSeisRecordsByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeSeisRecordsByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeSeisRecordsByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>;
+
+/**
+ * __usePurgeSeisRecordsByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeSeisRecordsByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeSeisRecordsByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeSeisRecordsByDateMutation, { data, loading, error }] = usePurgeSeisRecordsByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeSeisRecordsByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>(PurgeSeisRecordsByDateDocument, options);
+      }
+export type PurgeSeisRecordsByDateMutationHookResult = ReturnType<typeof usePurgeSeisRecordsByDateMutation>;
+export type PurgeSeisRecordsByDateMutationResult = ApolloReactCommon.MutationResult<PurgeSeisRecordsByDateMutation>;
+export type PurgeSeisRecordsByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeSeisRecordsByDateMutation, PurgeSeisRecordsByDateMutationVariables>;
+export const GetCleanupStatusDocument = gql`
+    query getCleanupStatus {
+  getCleanupStatus {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+
+/**
+ * __useGetCleanupStatusQuery__
+ *
+ * To run a query within a React component, call `useGetCleanupStatusQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGetCleanupStatusQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGetCleanupStatusQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGetCleanupStatusQuery(baseOptions?: ApolloReactHooks.QueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+      }
+export function useGetCleanupStatusLazyQuery(baseOptions?: ApolloReactHooks.LazyQueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+          const options = {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useLazyQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+        }
+export function useGetCleanupStatusSuspenseQuery(baseOptions?: ApolloReactHooks.SkipToken | ApolloReactHooks.SuspenseQueryHookOptions<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>) {
+          const options = baseOptions === ApolloReactHooks.skipToken ? baseOptions : {...defaultOptions, ...baseOptions}
+          return ApolloReactHooks.useSuspenseQuery<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>(GetCleanupStatusDocument, options);
+        }
+export type GetCleanupStatusQueryHookResult = ReturnType<typeof useGetCleanupStatusQuery>;
+export type GetCleanupStatusLazyQueryHookResult = ReturnType<typeof useGetCleanupStatusLazyQuery>;
+export type GetCleanupStatusSuspenseQueryHookResult = ReturnType<typeof useGetCleanupStatusSuspenseQuery>;
+export type GetCleanupStatusQueryResult = ApolloReactCommon.QueryResult<GetCleanupStatusQuery, GetCleanupStatusQueryVariables>;
 export const PurgeMiniSeedFilesDocument = gql`
     mutation purgeMiniSeedFiles {
-  purgeMiniSeedFiles
+  purgeMiniSeedFiles {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeMiniSeedFilesMutationFn = ApolloReactCommon.MutationFunction<PurgeMiniSeedFilesMutation, PurgeMiniSeedFilesMutationVariables>;
@@ -1076,9 +1432,55 @@ export function usePurgeMiniSeedFilesMutation(baseOptions?: ApolloReactHooks.Mut
 export type PurgeMiniSeedFilesMutationHookResult = ReturnType<typeof usePurgeMiniSeedFilesMutation>;
 export type PurgeMiniSeedFilesMutationResult = ApolloReactCommon.MutationResult<PurgeMiniSeedFilesMutation>;
 export type PurgeMiniSeedFilesMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeMiniSeedFilesMutation, PurgeMiniSeedFilesMutationVariables>;
+export const PurgeMiniSeedFilesByDateDocument = gql`
+    mutation purgeMiniSeedFilesByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeMiniSeedFilesByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeMiniSeedFilesByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>;
+
+/**
+ * __usePurgeMiniSeedFilesByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeMiniSeedFilesByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeMiniSeedFilesByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeMiniSeedFilesByDateMutation, { data, loading, error }] = usePurgeMiniSeedFilesByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeMiniSeedFilesByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>(PurgeMiniSeedFilesByDateDocument, options);
+      }
+export type PurgeMiniSeedFilesByDateMutationHookResult = ReturnType<typeof usePurgeMiniSeedFilesByDateMutation>;
+export type PurgeMiniSeedFilesByDateMutationResult = ApolloReactCommon.MutationResult<PurgeMiniSeedFilesByDateMutation>;
+export type PurgeMiniSeedFilesByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeMiniSeedFilesByDateMutation, PurgeMiniSeedFilesByDateMutationVariables>;
 export const PurgeHelicorderFilesDocument = gql`
     mutation purgeHelicorderFiles {
-  purgeHelicorderFiles
+  purgeHelicorderFiles {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
 }
     `;
 export type PurgeHelicorderFilesMutationFn = ApolloReactCommon.MutationFunction<PurgeHelicorderFilesMutation, PurgeHelicorderFilesMutationVariables>;
@@ -1106,6 +1508,45 @@ export function usePurgeHelicorderFilesMutation(baseOptions?: ApolloReactHooks.M
 export type PurgeHelicorderFilesMutationHookResult = ReturnType<typeof usePurgeHelicorderFilesMutation>;
 export type PurgeHelicorderFilesMutationResult = ApolloReactCommon.MutationResult<PurgeHelicorderFilesMutation>;
 export type PurgeHelicorderFilesMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeHelicorderFilesMutation, PurgeHelicorderFilesMutationVariables>;
+export const PurgeHelicorderFilesByDateDocument = gql`
+    mutation purgeHelicorderFilesByDate($startDate: Int64!, $endDate: Int64!) {
+  purgeHelicorderFilesByDate(startDate: $startDate, endDate: $endDate) {
+    id
+    kind
+    status
+    startedAt
+    finishedAt
+    error
+  }
+}
+    `;
+export type PurgeHelicorderFilesByDateMutationFn = ApolloReactCommon.MutationFunction<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>;
+
+/**
+ * __usePurgeHelicorderFilesByDateMutation__
+ *
+ * To run a mutation, you first call `usePurgeHelicorderFilesByDateMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `usePurgeHelicorderFilesByDateMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [purgeHelicorderFilesByDateMutation, { data, loading, error }] = usePurgeHelicorderFilesByDateMutation({
+ *   variables: {
+ *      startDate: // value for 'startDate'
+ *      endDate: // value for 'endDate'
+ *   },
+ * });
+ */
+export function usePurgeHelicorderFilesByDateMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>(PurgeHelicorderFilesByDateDocument, options);
+      }
+export type PurgeHelicorderFilesByDateMutationHookResult = ReturnType<typeof usePurgeHelicorderFilesByDateMutation>;
+export type PurgeHelicorderFilesByDateMutationResult = ApolloReactCommon.MutationResult<PurgeHelicorderFilesByDateMutation>;
+export type PurgeHelicorderFilesByDateMutationOptions = ApolloReactCommon.BaseMutationOptions<PurgeHelicorderFilesByDateMutation, PurgeHelicorderFilesByDateMutationVariables>;
 export const RestoreStationConfigDocument = gql`
     mutation restoreStationConfig {
   restoreStationConfig
@@ -1198,6 +1639,36 @@ export function useRemoveUserMutation(baseOptions?: ApolloReactHooks.MutationHoo
 export type RemoveUserMutationHookResult = ReturnType<typeof useRemoveUserMutation>;
 export type RemoveUserMutationResult = ApolloReactCommon.MutationResult<RemoveUserMutation>;
 export type RemoveUserMutationOptions = ApolloReactCommon.BaseMutationOptions<RemoveUserMutation, RemoveUserMutationVariables>;
+export const RestartApplicationDocument = gql`
+    mutation restartApplication {
+  restartApplication
+}
+    `;
+export type RestartApplicationMutationFn = ApolloReactCommon.MutationFunction<RestartApplicationMutation, RestartApplicationMutationVariables>;
+
+/**
+ * __useRestartApplicationMutation__
+ *
+ * To run a mutation, you first call `useRestartApplicationMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useRestartApplicationMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [restartApplicationMutation, { data, loading, error }] = useRestartApplicationMutation({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useRestartApplicationMutation(baseOptions?: ApolloReactHooks.MutationHookOptions<RestartApplicationMutation, RestartApplicationMutationVariables>) {
+        const options = {...defaultOptions, ...baseOptions}
+        return ApolloReactHooks.useMutation<RestartApplicationMutation, RestartApplicationMutationVariables>(RestartApplicationDocument, options);
+      }
+export type RestartApplicationMutationHookResult = ReturnType<typeof useRestartApplicationMutation>;
+export type RestartApplicationMutationResult = ApolloReactCommon.MutationResult<RestartApplicationMutation>;
+export type RestartApplicationMutationOptions = ApolloReactCommon.BaseMutationOptions<RestartApplicationMutation, RestartApplicationMutationVariables>;
 export const RestartServiceDocument = gql`
     mutation restartService($serviceId: String!) {
   restartService(serviceId: $serviceId)
